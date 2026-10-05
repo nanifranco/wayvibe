@@ -227,7 +227,7 @@ function closeAll() {
 function resetRoute() { R.fast = {}; R.mine = null; R.pois = []; R.note = ""; R.seq++; R.busy = false; drawRoutes(); }
 function panelPadding() {
   const small = innerWidth < 700;
-  return small ? { top: 80, bottom: innerHeight * .5 + 20, left: 30, right: 30 } : { top: 60, bottom: 60, left: 440, right: 80 };
+  return small ? { top: 80, bottom: innerHeight * .5 + 20, left: 40, right: 70 } : { top: 60, bottom: 60, left: 440, right: 80 };
 }
 
 const ICON = {

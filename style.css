@@ -105,6 +105,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, .sug:focus-visi
   .sheet { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; max-height: 50%; padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
   .ui { width: calc(100vw - 24px); }
   .ui:has(.sheet:not([hidden])) .where { display: none; }
-  .maplibregl-ctrl-bottom-right { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 140px); }
+  .maplibregl-ctrl-bottom-right { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 170px); }
 }
 @media (prefers-reduced-motion: reduce) { .bar::after { animation: none; width: 100%; } }
