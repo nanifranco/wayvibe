@@ -38,7 +38,7 @@ export function buddy(mood = "happy", cls = "") {
     : arm("M10 64q-5 5-3 11M90 64q5 5 3 11");
   const extra = {
     think: `<g class="v-dots" fill="#a5b4fc"><circle cx="90" cy="18" r="3"/><circle cx="98" cy="9" r="4"/><circle cx="108" cy="0" r="5"/></g>`,
-    sleep: `<g class="v-z" fill="#a5b4fc" font-family="Plus Jakarta Sans,sans-serif" font-weight="800"><text x="88" y="24" font-size="14">z</text><text x="100" y="12" font-size="18">Z</text></g>`,
+    sleep: `<g class="v-z" fill="#a5b4fc" font-family="Fredoka,sans-serif" font-weight="600"><text x="88" y="24" font-size="14">z</text><text x="100" y="12" font-size="18">Z</text></g>`,
     party: `<g class="v-confetti"><rect x="-2" y="16" width="6" height="6" rx="1" fill="#fbbf24" transform="rotate(20 1 19)"/><circle cx="104" cy="20" r="3.5" fill="#4ade80"/><rect x="100" y="42" width="6" height="6" rx="1" fill="#f472b6" transform="rotate(-25 103 45)"/><circle cx="-4" cy="44" r="3" fill="#60a5fa"/><path d="M76 -2l3 6-3 6-3-6z" fill="#fbbf24"/></g>`,
     sad: `<path class="v-tear" d="M73 64q3 5 0 8q-3-3 0-8z" fill="#7dd3fc"/>`,
   }[mood] || "";

@@ -1,8 +1,8 @@
 // Wayvibe service worker: the app opens without signal, and map tiles you already saw stay available.
 // Route/search APIs are never cached here; the app handles those itself.
 // VERSION is bumped on every release so phones pick up the new worker.
-const VERSION = "2026.10.06-9";
-const APP = "wv-app-v9", TILES = "wv-tiles-v1", MAX_TILES = 1500;
+const VERSION = "2026.10.06-10";
+const APP = "wv-app-v10", TILES = "wv-tiles-v1", MAX_TILES = 1500;
 const SHELL = ["./", "index.html", "style.css", "app.js", "i18n.js", "icon.svg", "manifest.webmanifest",
   "mascot.js", "splash.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"];
 

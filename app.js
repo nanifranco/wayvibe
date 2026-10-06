@@ -12,7 +12,7 @@ const NOMINATIM = "https://nominatim.openstreetmap.org/reverse";
 const VALHALLA = "https://valhalla1.openstreetmap.de/route";
 // Backup router (OSRM by FOSSGIS) when Valhalla is down or overloaded
 const OSRM = { walk: "https://routing.openstreetmap.de/routed-foot/route/v1/driving/", bike: "https://routing.openstreetmap.de/routed-bike/route/v1/driving/", car: "https://routing.openstreetmap.de/routed-car/route/v1/driving/" };
-const TRANSITOUS = ["https://api.transitous.org/api/v5/plan", "https://api.transitous.org/api/v1/plan"];
+const TRANSITOUS = ["https://api.transitous.org/api/v6/plan", "https://api.transitous.org/api/v5/plan"];
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 const PHOTON_REVERSE = "https://photon.komoot.io/reverse";
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
@@ -231,12 +231,12 @@ function manIcon(type) {
 
 // ---------- Route styles ("vibes") ----------
 const VIBES = {
-  fastest: ["#2563eb", "#4f46e5"],
+  fastest: ["#6d5dfc", "#b26bff"],
   scenic: ["#0891b2", "#7c3aed"],
   tourist: ["#f97316", "#db2777"],
   shade: ["#059669", "#65a30d"],
   food: ["#ea580c", "#e11d48"],
-  quiet: ["#0284c7", "#4f46e5"],
+  quiet: ["#0ea5e9", "#6d5dfc"],
 };
 function setVibe(key) {
   const [a, b] = VIBES[key] || VIBES.fastest;
@@ -312,7 +312,27 @@ function ensureLayers() {
   add({ id: "wv-near-label", type: "symbol", source: "wv-near", minzoom: 14.5, layout: { "text-field": ["get", "name"], "text-size": 12, "text-offset": [0, 1.3], "text-anchor": "top", "text-optional": true }, paint: { "text-color": cssVar("--ink") || "#0f1729", "text-halo-color": casing, "text-halo-width": 1.6 } });
   drawRoutes(); drawNearby();
 }
-map.on("style.load", () => { setLabelLanguage(); ensureLayers(); });
+// Wayvibe's own map palette: warm paper land, soft periwinkle water, mint parks, lavender buildings.
+// Only recolours fills that exist in the style, so any style (or the raster fallback) still works.
+function tintMap() {
+  if (rasterFallback) return;
+  const dark = darkMQ.matches;
+  const P = dark ? { bg: "#1a1628", water: "#26305a", green: "#1d3a35", wood: "#1b3530", build: "#2a2440", sand: "#2b2536" }
+                 : { bg: "#f8f1e6", water: "#b7d3fb", green: "#cdeed3", wood: "#bfe6c8", build: "#ebe1f1", sand: "#f6e9cf" };
+  for (const l of map.getStyle()?.layers || []) {
+    const id = l.id.toLowerCase();
+    try {
+      if (l.type === "background") map.setPaintProperty(l.id, "background-color", P.bg);
+      else if (l.type === "fill" && /water|ocean|river|lake/.test(id)) map.setPaintProperty(l.id, "fill-color", P.water);
+      else if (l.type === "fill" && /wood|forest/.test(id)) map.setPaintProperty(l.id, "fill-color", P.wood);
+      else if (l.type === "fill" && /park|grass|garden|meadow|pitch|cemetery|landcover_wetland|national/.test(id)) map.setPaintProperty(l.id, "fill-color", P.green);
+      else if (l.type === "fill" && /sand|beach/.test(id)) map.setPaintProperty(l.id, "fill-color", P.sand);
+      else if ((l.type === "fill" || l.type === "fill-extrusion") && /building/.test(id)) map.setPaintProperty(l.id, l.type === "fill" ? "fill-color" : "fill-extrusion-color", P.build);
+      else if (l.type === "line" && /waterway/.test(id)) map.setPaintProperty(l.id, "line-color", P.water);
+    } catch {}
+  }
+}
+map.on("style.load", () => { tintMap(); setLabelLanguage(); ensureLayers(); });
 map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); });
 if (location.hostname === "localhost") window.wvDebug = { map, get R() { return R; } };
 function resumeTrip() {
@@ -731,9 +751,8 @@ function renderRoute() {
   const modeBtn = m => {
     const v = m === "transit" ? R.transit?.items?.[0]?.duration : R.fast[m]?.time;
     const err = m === "transit" ? R.transit && !R.transit.items?.length : R.fast[m]?.error;
-    const est = m === "transit" && R.transit?.items?.[0]?.estimated ? "≈ " : "";
     const no = m !== "transit" && R.fast[m]?.unreachable;
-    return `<button class="mode${no ? " no" : ""}" type="button" data-m="${m}" aria-pressed="${R.mode === m}">${ICON[m]}<b>${v ? est + fmtDur(v) : no ? t("notPossible") : err ? "—" : "…"}</b><span>${t(m)}</span></button>`;
+    return `<button class="mode${no ? " no" : ""}" type="button" data-m="${m}" aria-pressed="${R.mode === m}">${ICON[m]}<b>${v ? fmtDur(v) : no ? t("notPossible") : err ? "—" : "…"}</b><span>${t(m)}</span></button>`;
   };
   const fromName = from ? from.name : me ? t("myLocation") : "";
   const head = headRow(`<h2 class="title">${esc(dest.name)}</h2>`) +
@@ -804,6 +823,7 @@ function renderRoute() {
   const sb = $("#stepsBtn"); if (sb) sb.onclick = () => { R.steps = !R.steps; rerenderSheet(); if (R.steps) setSnap(2); };
   const rr = $("#retryRoute"); if (rr) rr.onclick = () => { delete R.fast[R.mode]; routeNow(true); };
   const rt = $("#retryTransit"); if (rt) rt.onclick = () => { R.transit = null; routeNow(true); };
+  const gw = $("#goWalk"); if (gw) gw.onclick = () => { R.mode = "walk"; R.steps = false; routeNow(true); };
   bindClose();
 }
 
@@ -1039,82 +1059,59 @@ function drawRoutes() {
 }
 
 // ---------- Metro and bus ----------
-// 1) Transitous: real timetables where the city publishes them (GTFS).
-// 2) Otherwise: real lines and stops from OpenStreetMap with an estimated time, clearly labelled as such.
+// Only real timetables: Transitous (MOTIS) plans with the GTFS each city publishes. When a city publishes none
+// we say so plainly. We never guess a trip from map data: guessed stops and times were confusing and often wrong.
+const WALKISH = new Set(["WALK", "FOOT", "BIKE", "CAR", "RENTAL", "CAR_PARKING", "CAR_DROPOFF"]);
+const MODE_KEY = { SUBWAY: "mSubway", METRO: "mSubway", TRAM: "mTram", BUS: "mBus", TROLLEYBUS: "mBus", COACH: "mCoach", RAIL: "mRail", SUBURBAN: "mRail", REGIONAL_RAIL: "mRail", REGIONAL_FAST_RAIL: "mRail", HIGHSPEED_RAIL: "mRail", LONG_DISTANCE: "mRail", NIGHT_RAIL: "mRail", FERRY: "mFerry", FUNICULAR: "mCable", AERIAL_LIFT: "mCable", AREAL_LIFT: "mCable", CABLE_CAR: "mCable" };
+const isBus = m => ["BUS", "COACH", "TROLLEYBUS"].includes(m);
+const hex = c => /^#?[0-9a-f]{6}$/i.test(c || "") ? "#" + c.replace("#", "") : null;
+// readable text on any line colour (some feeds give a colour but no text colour)
+const inkOn = c => { const n = parseInt(c.slice(1), 16), l = (.299 * (n >> 16) + .587 * (n >> 8 & 255) + .114 * (n & 255)) / 255; return l > .62 ? "#111827" : "#ffffff"; };
 async function loadTransit() {
-  let items = [];
-  try { items = await transitous(); } catch {}
-  if (!items.length) { try { items = await osmTransit(); } catch {} }
-  R.transit = { items };
+  try { R.transit = await transitous(); }
+  catch (e) { R.transit = { items: [], failed: true, offline: !!e?.offline }; }
 }
 async function transitous() {
-  const params = new URLSearchParams({ fromPlace: `${origin().lat},${origin().lon}`, toPlace: `${dest.lat},${dest.lon}`, numItineraries: "5", detailedTransfers: "false", pedestrianProfile: access ? "WHEELCHAIR" : "FOOT", language: lang });
-  let j = null;
-  for (const url of TRANSITOUS) { try { j = await getJSON(`${url}?${params}`, { timeout: 15000 }); break; } catch {} }
-  if (!j) return [];
-  return (j.itineraries || []).map(it => {
-    const legs = (it.legs || []).map(l => {
-      const walk = ["WALK", "BIKE", "CAR", "FOOT"].includes(l.mode);
-      const g = l.legGeometry;
-      const coords = g?.points ? decodePolyline(g.points, g.precision ?? 6) : [[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]];
-      const start = new Date(l.startTime || l.scheduledStartTime), end = new Date(l.endTime || l.scheduledEndTime);
-      return {
-        walk, mode: l.mode, coords, color: l.routeColor ? "#" + l.routeColor.replace("#", "") : "#5b6475", textColor: l.routeTextColor ? "#" + l.routeTextColor.replace("#", "") : "#ffffff",
-        name: l.routeShortName || l.displayName || l.routeLongName || l.mode, headsign: l.headsign || l.tripTo?.name || "",
-        from: l.from?.name, to: l.to?.name, start, end, duration: l.duration ?? (end - start) / 1000, distance: (l.distance || 0) / 1000,
-        stops: (l.intermediateStops || []).length + 1,
-      };
-    }).filter(l => !(l.walk && l.duration < 30));
-    return { duration: it.duration, start: new Date(it.startTime), end: new Date(it.endTime), transfers: it.transfers ?? Math.max(0, legs.filter(l => !l.walk).length - 1), legs, coords: legs.flatMap(l => l.coords) };
-  }).filter(it => it.legs.some(l => !l.walk)).sort((a, b) => a.end - b.end);
-}
-const ROUTE_KINDS = "subway|light_rail|monorail|train|tram|bus|trolleybus";
-const KIND = { subway: { speed: 33, wait: 4 }, light_rail: { speed: 26, wait: 6 }, monorail: { speed: 30, wait: 5 }, train: { speed: 45, wait: 10 }, tram: { speed: 18, wait: 7 }, bus: { speed: 14, wait: 8 }, trolleybus: { speed: 14, wait: 8 } };
-async function osmTransit() {
-  const O = { lat: origin().lat, lon: origin().lon }, D = { lat: dest.lat, lon: dest.lon };
-  if (km(O, D) < .8) return [];
-  const rad = access ? 500 : 700;
-  const sel = p => `node(around:${rad},${p.lat},${p.lon})[~"^(public_transport|highway|railway)$"~"^(platform|stop_position|bus_stop|station|halt|tram_stop)$"]`;
-  const rel = `[type=route][route~"^(${ROUTE_KINDS})$"]`;
-  const els = await overpassQuery(`[out:json][timeout:25];${sel(O)}->.a;${sel(D)}->.b;rel(bn.a)${rel}->.ra;rel(bn.b)${rel}->.rb;rel.ra.rb->.c;.c out body;node(r.c);out body;`);
-  const nodes = new Map(), rels = [];
-  for (const e of els) { if (e.type === "node") nodes.set(e.id, e); else if (e.type === "relation") rels.push(e); }
-  const walkKmh = access ? 3.6 : 4.8, now = Date.now(), best = new Map();
-  const nm = n => n.tags?.[`name:${lang}`] || n.tags?.name || "";
-  for (const r of rels) {
-    const seq = [];
-    for (const m of r.members || []) {
-      if (m.type !== "node" || !(m.role === "" || /stop|platform/.test(m.role))) continue;
-      const n = nodes.get(m.ref); if (!n) continue;
-      const last = seq[seq.length - 1];
-      if (last && ((last.tags?.name && last.tags.name === n.tags?.name) || km(last, n) < .06)) continue; // stop + platform of the same stop
-      seq.push(n);
-    }
-    if (seq.length < 2) continue;
-    let i = 0, j = 0;
-    seq.forEach((n, k) => { if (km(O, n) < km(O, seq[i])) i = k; if (km(D, n) < km(D, seq[j])) j = k; });
-    if (i >= j) continue; // this relation runs the other way
-    const a = seq[i], b = seq[j];
-    if (km(O, a) > rad / 1000 * 1.1 || km(D, b) > rad / 1000 * 1.1) continue;
-    const kind = KIND[r.tags.route] || KIND.bus;
-    let ride = 0; for (let k = i + 1; k <= j; k++) ride += km(seq[k - 1], seq[k]);
-    const w1 = km(O, a) * 1.3, w2 = km(b, D) * 1.3;
-    const tW1 = w1 / walkKmh * 3600, tWait = kind.wait * 60, tRide = ride / kind.speed * 3600 + (j - i) * 20, tW2 = w2 / walkKmh * 3600;
-    const total = tW1 + tWait + tRide + tW2;
-    const name = r.tags.ref || r.tags.name || r.tags.route;
-    const key = r.tags.route + ":" + name;
-    if (best.has(key) && best.get(key).duration <= total) continue;
-    const at = s => new Date(now + s * 1000);
-    const mode = /bus/.test(r.tags.route) ? "BUS" : r.tags.route.toUpperCase();
-    const colour = /^#?[0-9a-f]{6}$/i.test(r.tags.colour || "") ? "#" + r.tags.colour.replace("#", "") : (r.tags.colour || (mode === "BUS" ? "#5b6475" : "#2563eb"));
-    const legs = [
-      { walk: true, mode: "WALK", coords: [[O.lon, O.lat], [a.lon, a.lat]], to: nm(a), start: at(0), duration: tW1, distance: w1 },
-      { walk: false, mode, coords: seq.slice(i, j + 1).map(n => [n.lon, n.lat]), color: colour, textColor: "#ffffff", name, headsign: r.tags.to || "", from: nm(a), to: nm(b), start: at(tW1 + tWait), duration: tRide, distance: ride, stops: j - i, wait: kind.wait, accFrom: a.tags?.wheelchair, accTo: b.tags?.wheelchair },
-      { walk: true, mode: "WALK", coords: [[b.lon, b.lat], [D.lon, D.lat]], to: "", start: at(tW1 + tWait + tRide), duration: tW2, distance: w2 },
-    ];
-    best.set(key, { estimated: true, duration: total, start: at(0), end: at(total), transfers: 0, legs, coords: legs.flatMap(l => l.coords), accessScore: (a.tags?.wheelchair === "yes") + (b.tags?.wheelchair === "yes") });
+  const O = origin();
+  const params = new URLSearchParams({ fromPlace: `${O.lat},${O.lon}`, toPlace: `${dest.lat},${dest.lon}`, numItineraries: "5", detailedTransfers: "true", pedestrianProfile: access ? "WHEELCHAIR" : "FOOT", language: lang });
+  let j = null, lastErr = null;
+  for (const url of TRANSITOUS) {
+    try { j = await getJSON(`${url}?${params}`, { timeout: 20000 }); if (j && Array.isArray(j.itineraries)) break; j = null; }
+    catch (e) { lastErr = e; if (e?.offline) break; }
   }
-  return [...best.values()].sort((x, y) => (access ? y.accessScore - x.accessScore : 0) || x.duration - y.duration).slice(0, 4);
+  if (!j) throw lastErr || new Error("transit");
+  const items = j.itineraries.map(it => {
+    const legs = (it.legs || []).map(l => {
+      const walk = WALKISH.has(l.mode), g = l.legGeometry;
+      let coords = g?.points ? decodePolyline(g.points, g.precision ?? 6) : [];
+      if (coords.length < 2) coords = [[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]];
+      const start = new Date(l.startTime || l.scheduledStartTime), end = new Date(l.endTime || l.scheduledEndTime);
+      const base = { walk, mode: l.mode, coords, start, end, duration: l.duration ?? (end - start) / 1000, distance: (l.distance || 0) / 1000, from: l.from?.name || "", to: l.to?.name || "" };
+      if (walk) return base;
+      const color = hex(l.routeColor) || (isBus(l.mode) ? "#475569" : "#2563eb");
+      const stops = (l.intermediateStops || []).map(s => s.name).filter(Boolean);
+      const delay = l.realTime && l.scheduledStartTime ? Math.round((new Date(l.startTime) - new Date(l.scheduledStartTime)) / 60000) : 0;
+      return Object.assign(base, {
+        color, textColor: hex(l.routeTextColor) || inkOn(color),
+        kind: t(MODE_KEY[l.mode] || "mOther"),
+        name: l.routeShortName || l.displayName || l.tripShortName || l.routeLongName || t(MODE_KEY[l.mode] || "mOther"),
+        longName: l.routeShortName && l.routeLongName && l.routeLongName !== l.routeShortName ? l.routeLongName : "",
+        headsign: l.headsign || l.tripTo?.name || "", agency: l.agencyName || "",
+        track: l.from?.track || l.from?.scheduledTrack || "", live: !!l.realTime, delay,
+        stopNames: stops, stops: stops.length + 1,
+      });
+    }).filter(l => !(l.walk && l.duration < 45));
+    const rides = legs.filter(l => !l.walk);
+    return {
+      duration: it.duration, start: new Date(it.startTime), end: new Date(it.endTime),
+      transfers: Math.max(0, rides.length - 1), walkMin: Math.round(legs.filter(l => l.walk).reduce((s, l) => s + l.duration, 0) / 60),
+      legs, coords: legs.flatMap(l => l.coords), sig: rides.map(l => l.name).join(">") + "@" + +new Date(it.startTime),
+    };
+  }).filter(it => it.legs.some(l => !l.walk));
+  // drop duplicates and trips that leave much later but don't arrive sooner
+  const seen = new Set(), out = [];
+  for (const it of items.sort((a, b) => a.end - b.end || a.duration - b.duration)) { if (seen.has(it.sig)) continue; seen.add(it.sig); out.push(it); }
+  return { items: out.slice(0, 5), walkBetter: !out.length && (j.direct || []).length > 0 };
 }
 async function transitNow(seq, fit) {
   if (!origin()) { R.busy = false; return rerenderSheet(); }
@@ -1125,33 +1122,43 @@ async function transitNow(seq, fit) {
   fillOtherModes(seq);
 }
 function lineBadge(l) {
-  return `<span class="line" style="background:${esc(l.color)};color:${esc(l.textColor)}">${["BUS", "COACH", "TROLLEYBUS"].includes(l.mode) ? ICON.bus : ICON.transit}${esc(l.name)}</span>`;
+  return `<span class="line" style="background:${esc(l.color)};color:${esc(l.textColor)}">${isBus(l.mode) ? ICON.bus : ICON.transit}${esc(l.name)}</span>`;
 }
-function stopAccess(v) {
-  if (!access) return "";
-  if (v === "yes") return `<span class="acc-yes">♿ ${t("stop_yes")}</span>`;
-  if (v === "no") return `<span class="acc-no">${t("stop_no")}</span>`;
-  return `<span>${t("stop_unknown")}</span>`;
-}
+const mins = s => Math.max(1, Math.round(s / 60));
 function transitBody() {
   if (!origin()) return `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
   if (R.busy) return `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
-  const items = R.transit?.items || [];
-  if (!items.length) return `<div class="insight err">${buddy("sad")}<div>${t("noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
-  const it = items[R.itin] || items[0], est = !!it.estimated, ap = est ? "≈ " : "";
+  const T0 = R.transit || { items: [] }, items = T0.items;
+  if (!items.length) {
+    if (T0.walkBetter) return `<div class="insight">${buddy("happy")}<div>${t("transitWalk")}<br><button class="btn" id="goWalk" type="button">${t("goWalk")}</button></div></div>`;
+    return `<div class="insight err">${buddy("sad")}<div>${t(T0.failed ? (T0.offline ? "offline" : "transitDown") : "noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
+  }
+  const it = items[R.itin] || items[0];
   const tr = it.transfers === 0 ? t("direct") : it.transfers === 1 ? t("oneTransfer") : t("transfers", { n: it.transfers });
-  const badges = (est ? `<span class="badge est">${ICON.info}${t("estShort")}</span>` : "") + (usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : "");
-  const hero = `<div class="hero"><div class="hero-row"><span class="eta">${ap}${fmtDur(it.duration)}</span>${badges}</div><span class="eta-sub">${t("arriveAt", { t: ap + clock(it.end) })} · ${tr}</span></div>`;
-  const note = est ? `<div class="insight"><span class="dot"></span><div>${t("estimated")}</div></div>` : "";
-  const list = items.length > 1 ? `<div class="itins">${items.map((x, i) => `<button class="itin" type="button" data-i="${i}" aria-pressed="${i === R.itin}"><div class="itin-top"><b>${x.estimated ? "≈ " : ""}${fmtDur(x.duration)}</b><span>${x.estimated ? "" : `${clock(x.start)} – ${clock(x.end)}`}</span></div><div class="chain">${x.legs.map(l => l.walk ? `<span class="walkchip">${ICON.walk}${Math.max(1, Math.round(l.duration / 60))}</span>` : lineBadge(l)).join(`<span class="sep">›</span>`)}</div></button>`).join("")}</div>` : "";
-  const legs = `<ul class="tlegs">${it.legs.map((l, i) => {
-    const place = i === it.legs.length - 1 && l.walk ? t("destination") : l.to;
-    const body = l.walk
-      ? `<b>${esc(t("walkTo", { d: fmtDur(l.duration), p: place }))}</b><span>${fmtDist(l.distance)}</span>`
-      : `<b>${lineBadge(l)} ${l.headsign ? esc(t("toward", { p: l.headsign })) : ""}</b><span>${esc(l.from)} · ${est ? esc(t("waitAbout", { n: l.wait })) : t("leaves", { t: clock(l.start) })} · ${t("stops", { n: l.stops })}</span>${est ? stopAccess(l.accFrom) : ""}<span>${esc(t("getOff", { p: l.to }))}</span>${est ? stopAccess(l.accTo) : ""}`;
-    return `<li class="tleg ${l.walk ? "walk" : ""}" style="--c:${l.walk ? "var(--fast)" : esc(l.color)}"><span class="tm">${ap && i ? "≈" : ""}${clock(l.start)}</span><span class="rail"></span><div class="bd">${body}</div></li>`;
-  }).join("")}</ul>`;
-  return hero + note + list + legs;
+  const live = it.legs.some(l => l.live);
+  const badges = (live ? `<span class="badge live"><i></i>${t("live")}</span>` : "") + (usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : "");
+  const hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(it.duration)}</span>${badges}</div><span class="eta-sub">${t("departArrive", { a: clock(it.start), b: clock(it.end) })} · ${tr} · ${t("walkTotal", { n: it.walkMin })}</span></div>`;
+  const chain = x => x.legs.map(l => l.walk ? `<span class="walkchip">${ICON.walk}${mins(l.duration)}</span>` : lineBadge(l)).join(`<span class="sep">›</span>`);
+  const list = items.length > 1 ? `<div class="itins" role="list">${items.map((x, i) => `<button class="itin" type="button" data-i="${i}" aria-pressed="${i === R.itin}"><div class="itin-top"><b>${fmtDur(x.duration)}</b><span>${clock(x.start)} → ${clock(x.end)}</span></div><div class="chain">${chain(x)}</div></button>`).join("")}</div>` : "";
+  const last = it.legs.length - 1;
+  const steps = it.legs.map((l, i) => {
+    if (l.walk) {
+      const txt = i === last ? t("walkToDest", { d: fmtDur(l.duration) }) : i === 0 ? t("walkTo", { d: fmtDur(l.duration), p: l.to }) : t("transferWalk", { d: fmtDur(l.duration), p: l.to });
+      return `<li class="tleg walk" style="--c:var(--fast)"><span class="tm">${clock(l.start)}</span><span class="rail"></span><div class="bd"><b>${esc(txt)}</b><span>${fmtDist(l.distance)}</span></div></li>`;
+    }
+    const prev = it.legs[i - 1], wait = prev ? Math.round((l.start - prev.end) / 60000) : 0;
+    const when = t("leaves", { t: clock(l.start) }) + (wait >= 2 ? ` · ${t("waitMin", { n: wait })}` : "") + (l.delay > 1 ? ` · <span class="late">${t("late", { n: l.delay })}</span>` : l.live ? ` · <span class="ontime">${t("live")}</span>` : "");
+    const ride = l.stopNames.length ? `<details class="stops"><summary>${l.stops === 1 ? t("oneStop") : t("stops", { n: l.stops })} · ${fmtDur(l.duration)}</summary><ol>${l.stopNames.map(s => `<li>${esc(s)}</li>`).join("")}</ol></details>` : `<span>${l.stops === 1 ? t("oneStop") : t("stops", { n: l.stops })} · ${fmtDur(l.duration)}</span>`;
+    return `<li class="tleg ride" style="--c:${esc(l.color)}"><span class="tm">${clock(l.start)}</span><span class="rail"></span><div class="bd">
+      <span class="ride-k">${esc(l.kind)}${l.agency && !l.agency.toLowerCase().includes(l.kind.toLowerCase()) ? ` · ${esc(l.agency)}` : ""}</span>
+      <b class="ride-h">${lineBadge(l)}${l.headsign ? ` <span>${esc(t("toward", { p: l.headsign }))}</span>` : ""}</b>
+      ${l.longName ? `<span class="muted-s">${esc(l.longName)}</span>` : ""}
+      <span>${esc(t("boardAt", { p: l.from }))}${l.track ? ` · ${esc(t("track", { n: l.track }))}` : ""}</span>
+      <span>${when}</span>${ride}
+      <b class="getoff">${esc(t("getOff", { p: l.to }))} <small>${clock(l.end)}</small></b></div></li>`;
+  }).join("");
+  const arrive = `<li class="tleg end"><span class="tm">${clock(it.end)}</span><span class="rail"></span><div class="bd"><b>${esc(t("arriveDest"))}</b></div></li>`;
+  return hero + list + `<ul class="tlegs">${steps}${arrive}</ul>`;
 }
 
 // ---------- Turn-by-turn navigation ----------

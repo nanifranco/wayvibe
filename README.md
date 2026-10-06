@@ -6,7 +6,7 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 
 - Muestra un mapa real del mundo y dónde estás (calle, barrio y ciudad).
 - Busca cualquier sitio, o mantén pulsado el mapa para elegir un punto.
-- Calcula el tiempo a pie, en bici, en coche y en metro o camión, todo dentro de la app. Metro y camión usan horarios reales de Transitous; si la ciudad no publica horarios, usa las líneas y paradas reales de OpenStreetMap y marca el tiempo como estimado.
+- Calcula el tiempo a pie, en bici, en coche y en metro o camión, todo dentro de la app. Metro y camión usan solo horarios reales de Transitous, explicados paso a paso (dónde subir, dirección, paradas, dónde bajar y transbordos). Si la ciudad no publica horarios, la app lo dice y no inventa una ruta.
 - Si no se puede llegar de una forma (por ejemplo, hay agua de por medio), lo dice en vez de inventar un camino.
 - Opción "sin escaleras" para silla de ruedas, carriola o bastón: rutas a pie sin escalones y transporte con acceso sin escalones cuando hay datos.
 - Navegación paso a paso con voz y vibración: el mapa te sigue, te dice la próxima vuelta y recalcula si te sales de la ruta.

@@ -1,7 +1,7 @@
 // Opening greeting: Vibi drops onto the map like a pin, pings its location and waves hello.
 // It never blocks the app: it leaves when the map is ready (at least ~2 s so it reads), on tap, or after 4.5 s at most.
 import { buddy } from "./mascot.js";
-export const VERSION = "2026.10.06-9"; // tap the W logo to see it
+export const VERSION = "2026.10.06-10"; // tap the logo to see it
 
 const el = document.getElementById("splash");
 if (el) {

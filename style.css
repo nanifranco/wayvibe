@@ -2,34 +2,37 @@
    --g1/--g2 is the route color. JS swaps it when you pick what kind of route you want,
    so the chip you pressed, the line on the map and the main button always match (mapping). */
 :root {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --soft: #f1f3f6;
-  --soft-2: #e8ebf0;
-  --ink: #0f1729;
-  --ink-2: #334155;
-  --muted: #64748b;
-  --line: #e3e7ee;
-  --me: #2563eb;
-  --fast: #94a3b8;
+  /* Wayvibe's own look: warm paper, Vibi's indigo ink and lavender, rounded type, chunky "sticker" buttons that press down */
+  --bg: #fbf6ee;
+  --surface: #fffdf9;
+  --soft: #f6efe4;
+  --soft-2: #ece2d3;
+  --ink: #2e1d63;
+  --ink-2: #4b3f78;
+  --muted: #7d7397;
+  --line: #ece3d5;
+  --me: #6d5dfc;
+  --fast: #a59fbd;
   --casing: #ffffff;
-  --ok: #0f9d58;
-  --warn: #b45309;
-  --bad: #d93636;
-  --g1: #2563eb;
-  --g2: #7c3aed;
-  --shadow-1: 0 1px 2px rgba(15, 23, 41, .06), 0 1px 1px rgba(15, 23, 41, .04);
-  --shadow-2: 0 10px 30px -10px rgba(15, 23, 41, .22), 0 2px 6px rgba(15, 23, 41, .06);
-  --display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
-  --body: "Inter", "Segoe UI", system-ui, sans-serif;
-  --r: 20px;
+  --ok: #10a37f;
+  --warn: #c2620a;
+  --bad: #e5484d;
+  --g1: #6d5dfc;
+  --g2: #ff7aa8;
+  --press: rgba(46, 29, 99, .16);
+  --shadow-1: 0 2px 0 var(--press);
+  --shadow-2: 0 4px 0 rgba(46, 29, 99, .07), 0 18px 36px -18px rgba(46, 29, 99, .38);
+  --display: "Fredoka", "Nunito", system-ui, sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --r: 26px;
   --tap: 44px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117; --surface: #161b24; --soft: #1e2430; --soft-2: #283040; --ink: #eef2f8; --ink-2: #cbd5e1; --muted: #94a3b8;
-    --line: #262e3b; --me: #5b8cff; --fast: #6b7689; --casing: #161b24; --ok: #34c77b; --warn: #f0a640; --bad: #ff6b6b;
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4); --shadow-2: 0 12px 30px -10px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .4);
+    --bg: #14111f; --surface: #1d1930; --soft: #27223d; --soft-2: #332c4d; --ink: #f4f0ff; --ink-2: #d9d1f5; --muted: #a59dc4;
+    --line: #2f2947; --me: #8f82ff; --fast: #6e6890; --casing: #1d1930; --ok: #3ccf9f; --warn: #f3a54a; --bad: #ff6b70;
+    --g1: #8f82ff; --press: rgba(0, 0, 0, .45);
+    --shadow-1: 0 2px 0 var(--press); --shadow-2: 0 4px 0 rgba(0, 0, 0, .35), 0 18px 36px -18px rgba(0, 0, 0, .8);
     color-scheme: dark;
   }
 }
@@ -426,3 +429,69 @@ body.picking .cats, body.picking .where, body.picking .hint { display: none !imp
 .brand { cursor: pointer; }
 .vibi .v-sprout { transform-origin: 50px 12px; animation: v-sway 3s ease-in-out infinite; }
 @keyframes v-sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+
+/* ---------- Wayvibe identity ---------- */
+body { font-weight: 600; }
+.card { border: 2px solid var(--line); }
+.search { border-radius: 24px; min-height: 58px; padding: 6px 6px 6px 7px; }
+.brand { width: 44px; height: 44px; border-radius: 16px; background: linear-gradient(150deg, #a8d8ff, #a99bff 55%, #f7b4dc); box-shadow: inset 0 -3px 0 rgba(46, 29, 99, .14); cursor: pointer; }
+.brand svg { width: 36px; height: 36px; }
+#q { font-weight: 700; }
+#q::placeholder { font-weight: 600; }
+.langbtn { border-left: 0; background: var(--soft); border-radius: 14px; height: 40px; margin-left: 2px; }
+.cat { height: 40px; border: 2px solid var(--line); box-shadow: var(--shadow-1); font-weight: 800; padding: 0 14px 0 8px; transition: transform .1s, box-shadow .1s; }
+.cat svg { width: 22px; height: 22px; padding: 3px; border-radius: 50%; background: color-mix(in srgb, var(--c, var(--g1)) 16%, transparent); }
+.cat:active, .pref:active, .btn:active, .mode:active { transform: translateY(2px); box-shadow: none; }
+.cat[aria-pressed="true"] { background: var(--g1); border-color: var(--g1); color: #fff; box-shadow: 0 2px 0 color-mix(in srgb, var(--g1) 60%, #000); }
+.cat[aria-pressed="true"] svg { background: rgba(255, 255, 255, .25); }
+.where, .hint { border-radius: 22px; }
+.sheet { border-radius: var(--r); }
+.title, .eta, .itin-top b, .navcard .dist, .navbottom .big { font-weight: 600; letter-spacing: -.01em; }
+.title { font-size: 26px; }
+.q { font-family: var(--display); font-weight: 600; font-size: 16px; }
+.modes { background: transparent; padding: 0; gap: 8px; }
+.mode { border: 2px solid var(--line); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-1); min-height: 72px; color: var(--ink-2); transition: transform .1s, box-shadow .1s; }
+.mode svg { width: 30px; height: 30px; padding: 5px; border-radius: 50%; background: var(--soft); }
+.mode b { font-weight: 800; }
+.mode[aria-pressed="true"] { background: var(--g1); border-color: var(--g1); color: #fff; box-shadow: 0 3px 0 color-mix(in srgb, var(--g1) 60%, #000); }
+.mode[aria-pressed="true"] b, .mode[aria-pressed="true"] span { color: #fff; }
+.mode[aria-pressed="true"] svg { background: rgba(255, 255, 255, .22); }
+.pref { border: 2px solid var(--line); box-shadow: var(--shadow-1); font-weight: 800; height: 42px; }
+.pref[aria-pressed="true"] { box-shadow: 0 3px 0 color-mix(in srgb, var(--c1) 60%, #000); }
+.btn { border: 2px solid var(--line); border-radius: 18px; font-weight: 800; box-shadow: var(--shadow-1); transition: transform .1s, box-shadow .1s; }
+.btn.go { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: .01em; border: 0; background: var(--g1); box-shadow: 0 4px 0 color-mix(in srgb, var(--g1) 60%, #000); }
+.btn.go:active { transform: translateY(4px); }
+.insight, .loading { border-radius: 20px; border: 2px dashed var(--soft-2); background: var(--surface); }
+.insight.err { border-color: color-mix(in srgb, var(--bad) 30%, transparent); background: color-mix(in srgb, var(--bad) 6%, var(--surface)); }
+.fromto, .access, .facts { border-width: 2px; border-radius: 20px; }
+.ft-edit { background: color-mix(in srgb, var(--g1) 12%, transparent); }
+.ft-dot.start { border-color: var(--ok); }
+.itin { border: 2px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-1); }
+.itin[aria-pressed="true"] { border-color: var(--g1); box-shadow: 0 2px 0 color-mix(in srgb, var(--g1) 50%, #000); }
+.line { border-radius: 9px; font-size: 13px; padding: 3px 9px; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .15); }
+.navcard { background: var(--ink); border-radius: 26px; }
+.navcard .arrow { border-radius: 20px; box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+.maplibregl-ctrl-group { border-radius: 18px !important; border: 2px solid var(--line); box-shadow: var(--shadow-1), var(--shadow-2) !important; }
+
+/* transit steps: what to do, in plain words */
+.badge.live { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+.badge.live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: live 1.6s ease-in-out infinite; }
+@keyframes live { 50% { opacity: .3; } }
+.tleg .bd .ride-k { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tleg .bd .ride-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+.tleg .bd .ride-h span { color: var(--ink); font-size: 15px; font-weight: 800; }
+.tleg .bd .muted-s { font-size: 12px; }
+.tleg .bd .late { color: var(--warn); font-weight: 800; }
+.tleg .bd .ontime { color: var(--ok); font-weight: 800; }
+.tleg .bd .getoff { margin-top: 2px; }
+.tleg .bd .getoff small { color: var(--muted); font-weight: 700; margin-left: 4px; }
+.stops summary { cursor: pointer; font-size: 13px; font-weight: 800; color: var(--g1); padding: 4px 0; list-style: none; }
+.stops summary::-webkit-details-marker { display: none; }
+.stops summary::before { content: "▸ "; }
+.stops[open] summary::before { content: "▾ "; }
+.stops ol { margin: 2px 0 4px; padding-left: 18px; font-size: 13px; color: var(--ink-2); display: grid; gap: 2px; }
+.tleg.end .rail::after { background: var(--g1); border-color: var(--g1); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.tleg.end .bd { padding-bottom: 4px; }
+.maplibregl-user-location-dot, .maplibregl-user-location-dot::before { background-color: var(--me); }
+.maplibregl-user-location-accuracy-circle { background-color: color-mix(in srgb, var(--me) 16%, transparent); }
+.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon { filter: hue-rotate(55deg) saturate(1.3); }
