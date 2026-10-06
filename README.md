@@ -6,9 +6,12 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 
 - Muestra un mapa real del mundo y dónde estás (calle, barrio y ciudad).
 - Busca cualquier sitio, o mantén pulsado el mapa para elegir un punto.
-- Calcula el tiempo a pie, en bici, en coche y en metro o camión (con líneas, horarios y transbordos de Transitous), todo dentro de la app.
-- Navegación paso a paso: el mapa te sigue, te dice la próxima vuelta y recalcula si te sales de la ruta.
-- "¿Cómo quieres ir?": elige Turística, Con sombra, Con restaurantes o Tranquila, o escríbelo con tus palabras ("por donde haya cafés y algo de sombra"). La ruta pasa por zonas con más lugares de ese tipo y te dice cuántos minutos añade.
+- Calcula el tiempo a pie, en bici, en coche y en metro o camión, todo dentro de la app. Metro y camión usan horarios reales de Transitous; si la ciudad no publica horarios, usa las líneas y paradas reales de OpenStreetMap y marca el tiempo como estimado.
+- Si no se puede llegar de una forma (por ejemplo, hay agua de por medio), lo dice en vez de inventar un camino.
+- Opción "sin escaleras" para silla de ruedas, carriola o bastón: rutas a pie sin escalones y transporte con acceso sin escalones cuando hay datos.
+- Navegación paso a paso con voz y vibración: el mapa te sigue, te dice la próxima vuelta y recalcula si te sales de la ruta.
+- Lugares cercanos reales (restaurantes, cafés, metro, farmacias, parques, cajeros) con horario, teléfono y accesibilidad cuando OpenStreetMap los tiene.
+- "¿Qué tipo de camino prefieres?": Turística, Con sombra, Con restaurantes o Tranquila. La caja de texto solo entiende estos filtros y la opción sin escaleras; si escribes otra cosa, te dice qué puedes pedir.
 - Idiomas: español, inglés, portugués, francés y coreano. Las etiquetas del mapa cambian también.
 
 ## Servicios (gratis, sin claves)
@@ -20,7 +23,7 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 | Dirección actual | [Nominatim](https://nominatim.org) |
 | Rutas | [Valhalla](https://valhalla1.openstreetmap.de) (FOSSGIS) |
 | Metro y camión | [Transitous](https://transitous.org) |
-| Lugares a lo largo de la ruta | [Overpass API](https://overpass-api.de) |
+| Lugares, líneas de transporte y datos de accesibilidad | [Overpass API](https://overpass-api.de) |
 
 Son servidores públicos con límites de uso justo. Si la app crece, conviene usar servidores propios o un proveedor de pago.
 
