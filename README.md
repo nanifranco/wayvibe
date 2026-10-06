@@ -12,6 +12,9 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 - Navegación paso a paso con voz y vibración: el mapa te sigue, te dice la próxima vuelta y recalcula si te sales de la ruta.
 - Lugares cercanos reales (restaurantes, cafés, metro, farmacias, parques, cajeros) con horario, teléfono y accesibilidad cuando OpenStreetMap los tiene.
 - "¿Qué tipo de camino prefieres?": Turística, Con sombra, Con restaurantes o Tranquila. La caja de texto solo entiende estos filtros y la opción sin escaleras; si escribes otra cosa, te dice qué puedes pedir.
+- Aguanta fallas: si un servidor no responde, reintenta y usa uno de respaldo (rutas con OSRM, búsqueda con Nominatim, lugares con otros espejos de Overpass, mapa con OpenStreetMap). Sin señal te avisa y reintenta solo cuando vuelve.
+- Durante la navegación mantiene la pantalla encendida y avisa si el GPS está débil o perdido.
+- Se puede instalar en el celular ("Agregar a pantalla de inicio") y abre sin conexión con los mapas que ya viste.
 - Idiomas: español, inglés, portugués, francés, coreano, chino, japonés y ruso. Las indicaciones paso a paso en coreano y chino salen en inglés porque el servidor de rutas no tiene esos idiomas. Las etiquetas del mapa cambian también.
 
 ## Servicios (gratis, sin claves)

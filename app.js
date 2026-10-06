@@ -8,8 +8,14 @@ const STYLE_DARK = "https://tiles.openfreemap.org/styles/dark";
 const PHOTON = "https://photon.komoot.io/api/";
 const NOMINATIM = "https://nominatim.openstreetmap.org/reverse";
 const VALHALLA = "https://valhalla1.openstreetmap.de/route";
+// Backup router (OSRM by FOSSGIS) when Valhalla is down or overloaded
+const OSRM = { walk: "https://routing.openstreetmap.de/routed-foot/route/v1/driving/", bike: "https://routing.openstreetmap.de/routed-bike/route/v1/driving/", car: "https://routing.openstreetmap.de/routed-car/route/v1/driving/" };
 const TRANSITOUS = ["https://api.transitous.org/api/v5/plan", "https://api.transitous.org/api/v1/plan"];
-const OVERPASS = "https://overpass-api.de/api/interpreter";
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+const PHOTON_REVERSE = "https://photon.komoot.io/reverse";
+const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
+// If the vector tiles can't load, fall back to plain OpenStreetMap raster tiles so there is always a map
+const STYLE_RASTER = { version: 8, glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf", sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap" } }, layers: [{ id: "osm", type: "raster", source: "osm" }] };
 
 // ---------- Small persistent settings ----------
 const store = {
@@ -48,6 +54,19 @@ langSel.onchange = () => {
   else rerenderSheet();
 };
 applyI18n();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// ---------- Connection ----------
+function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.textContent = t("offline"); }
+addEventListener("offline", renderOffline);
+addEventListener("online", () => {
+  renderOffline(); toast(t("backOnline"));
+  if (!me) geo.trigger();
+  // retry whatever failed while we were offline
+  if (view === "route" && dest && me) { for (const m of Object.keys(R.fast)) if (R.fast[m]?.error && !R.fast[m].unreachable) delete R.fast[m]; if (R.transit && !R.transit.items.length) R.transit = null; routeNow(); }
+  else if (view === "nearby" && NEAR.error) nearby(NEAR.cat);
+});
+addEventListener("load", renderOffline);
 
 // ---------- Helpers ----------
 function km(a, b) {
@@ -92,10 +111,35 @@ function bearing(a, b) {
   const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lon - a.lon) * r);
   return (Math.atan2(y, x) / r + 360) % 360;
 }
+// Every network call goes through here: a timeout, one retry, and the next mirror if a server is down.
+// A 4xx answer (other than 408/429) is a real "no" from the server, so it is not retried.
+async function getJSON(urls, { init, timeout = 12000, retries = 1, signal } = {}) {
+  let last = new Error("offline");
+  for (const url of [].concat(urls)) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      if (signal?.aborted) throw new DOMException("aborted", "AbortError");
+      if (!navigator.onLine) throw Object.assign(new Error("offline"), { offline: true });
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), timeout);
+      const relay = () => ctl.abort();
+      signal?.addEventListener("abort", relay);
+      try {
+        const r = await fetch(url, { ...init, signal: ctl.signal });
+        if (r.ok) return await r.json();
+        last = Object.assign(new Error("http " + r.status), { status: r.status });
+        if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429) throw last;
+        if (r.status === 429) await sleep(1200 * (attempt + 1));
+      } catch (e) {
+        if (e.status && e.status < 500 && e.status !== 408 && e.status !== 429) throw e;
+        if (signal?.aborted) throw e;
+        last = e;
+      } finally { clearTimeout(timer); signal?.removeEventListener("abort", relay); }
+    }
+  }
+  throw last;
+}
 async function overpassQuery(q) {
-  const r = await fetch(OVERPASS, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } });
-  if (!r.ok) throw new Error("overpass " + r.status);
-  return (await r.json()).elements || [];
+  const j = await getJSON(OVERPASS, { init: { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }, timeout: 25000, retries: 0 });
+  return j.elements || [];
 }
 
 // ---------- Icons ----------
@@ -167,7 +211,11 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
 const geo = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true, timeout: 15000 }, trackUserLocation: true, showAccuracyCircle: true, showUserHeading: true });
 map.addControl(geo, "bottom-right");
-darkMQ.addEventListener("change", () => map.setStyle(darkMQ.matches ? STYLE_DARK : STYLE_LIGHT));
+let rasterFallback = false;
+darkMQ.addEventListener("change", () => { if (!rasterFallback) map.setStyle(darkMQ.matches ? STYLE_DARK : STYLE_LIGHT); });
+function useRasterMap() { if (rasterFallback) return; rasterFallback = true; map.setStyle(STYLE_RASTER); }
+map.on("error", e => { if (!map.isStyleLoaded() && /style|openfreemap/i.test(String(e?.error?.message || e?.error?.url || ""))) useRasterMap(); });
+setTimeout(() => { if (!map.isStyleLoaded() && navigator.onLine) useRasterMap(); }, 10000);
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 function setLabelLanguage() {
@@ -217,16 +265,28 @@ geo.on("geolocate", e => {
 });
 geo.on("error", () => { if (!me) { locState = "off"; renderWhere(); } });
 
+const reverseCache = new Map();
 async function reverse(lat, lon) {
-  try {
-    const r = await fetch(`${NOMINATIM}?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=${lang}`);
-    if (!r.ok) return null;
-    const j = await r.json(), a = j.address || {};
+  const key = `${lang}|${lat.toFixed(4)}|${lon.toFixed(4)}`;
+  if (reverseCache.has(key)) return reverseCache.get(key);
+  const res = await reverseNominatim(lat, lon).catch(() => null) || await reversePhoton(lat, lon).catch(() => null);
+  if (res) reverseCache.set(key, res);
+  return res;
+}
+async function reversePhoton(lat, lon) {
+  const j = await getJSON(`${PHOTON_REVERSE}?lat=${lat}&lon=${lon}`, { timeout: 8000 });
+  const p = j.features?.[0]?.properties; if (!p) return null;
+  const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+  return { title: street || p.name || p.district || p.city, sub: [p.district, p.city, p.country].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(", "), name: p.name };
+}
+async function reverseNominatim(lat, lon) {
+  {
+    const j = await getJSON(`${NOMINATIM}?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=${lang}`, { timeout: 8000 }), a = j.address || {};
     const street = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(" ");
     const area = a.neighbourhood || a.suburb || a.quarter || a.city_district;
     const city = a.city || a.town || a.village || a.municipality || a.county;
     return { title: street || j.name || area || city || j.display_name, sub: [area, city, a.country].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(", "), name: j.name };
-  } catch { return null; }
+  }
 }
 function showWhere(addr) { if (addr) whereAddr = addr; renderWhere(); }
 function renderWhere() {
@@ -306,8 +366,7 @@ async function photon(q) {
   const params = new URLSearchParams({ q, limit: "7" });
   if (b) { params.set("lat", b.lat.toFixed(5)); params.set("lon", b.lon.toFixed(5)); }
   if (["en", "fr", "de"].includes(lang)) params.set("lang", lang);
-  const r = await fetch(`${PHOTON}?${params}`, { signal: searchCtl.signal });
-  const j = await r.json();
+  const j = await getJSON(`${PHOTON}?${params}`, { signal: searchCtl.signal, timeout: 8000, retries: 0 });
   return (j.features || []).map(f => {
     const p = f.properties, [lon, lat] = f.geometry.coordinates;
     const street = [p.street, p.housenumber].filter(Boolean).join(" ");
@@ -315,6 +374,17 @@ async function photon(q) {
     const sub = [p.name ? street : "", p.district || p.locality, p.city, p.state, p.country].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i && v !== name).slice(0, 3).join(", ");
     return { name, sub, lat, lon, osm: p.osm_type && p.osm_id ? p.osm_type + p.osm_id : null };
   });
+}
+async function nominatimSearch(q) {
+  const b = biasPoint();
+  const params = new URLSearchParams({ q, format: "jsonv2", limit: "7", "accept-language": lang });
+  if (b) params.set("viewbox", [b.lon - .3, b.lat + .3, b.lon + .3, b.lat - .3].map(v => v.toFixed(4)).join(","));
+  const j = await getJSON(`${NOMINATIM_SEARCH}?${params}`, { timeout: 10000 });
+  return j.map(p => ({ name: p.name || p.display_name.split(",")[0], sub: p.display_name.split(",").slice(1, 4).join(",").trim(), lat: +p.lat, lon: +p.lon, osm: p.osm_type && p.osm_id ? p.osm_type[0].toUpperCase() + p.osm_id : null }));
+}
+async function search(q) {
+  try { return await photon(q); }
+  catch (e) { if (e.name === "AbortError") throw e; return nominatimSearch(q); }
 }
 function renderSugs() {
   const head = sugMode === "recent" ? `<div class="sugs-h">${t("recent")}</div>` : "";
@@ -336,7 +406,7 @@ qEl.addEventListener("input", () => {
   if (!q) { hideSugs(); return showRecents(); }
   if (q.length < 2) return hideSugs();
   debounce = setTimeout(async () => {
-    try { sugMode = "search"; sugItems = await photon(q); sugIdx = -1; renderSugs(); } catch (e) { if (e.name !== "AbortError") hideSugs(); }
+    try { sugMode = "search"; sugItems = await photon(q); sugIdx = -1; renderSugs(); } catch (e) { if (e.name !== "AbortError") hideSugs(); } // typing never hits the backup (its usage policy forbids autocomplete)
   }, 250);
 });
 qEl.addEventListener("keydown", e => {
@@ -349,7 +419,7 @@ $("#form").addEventListener("submit", async e => {
   e.preventDefault();
   if (sugIdx >= 0 && sugItems[sugIdx]) return choose(sugItems[sugIdx]);
   const q = qEl.value.trim(); if (!q) return;
-  try { sugMode = "search"; sugItems = await photon(q); } catch { sugItems = []; }
+  try { sugMode = "search"; sugItems = await search(q); } catch { sugItems = []; if (!navigator.onLine) toast(t("offline")); }
   if (sugItems[0]) choose(sugItems[0]); else renderSugs();
 });
 clearQ.onclick = () => { qEl.value = ""; clearQ.hidden = true; hideSugs(); closeAll(); qEl.focus(); };
@@ -492,7 +562,7 @@ function renderNearby() {
   const c = CATS[NEAR.cat];
   let body;
   if (NEAR.busy) body = `<p class="note">${t("searching")}</p><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
-  else if (NEAR.error) body = `<div class="insight err"><span class="dot"></span><div>${t("routeError")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
+  else if (NEAR.error) body = `<div class="insight err"><span class="dot"></span><div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
   else if (!NEAR.items.length) body = `<div class="insight"><span class="dot"></span><div>${t("nearbyNone")}</div></div>`;
   else body = `<div class="places" role="list">${NEAR.items.map((p, i) => `<button class="sug" type="button" role="listitem" data-i="${i}"><span class="ic" style="color:${c.color}">${ICON[c.icon]}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([p.sub, p.tags.wheelchair === "yes" ? "♿ " + t("wc_yes") : ""].filter(Boolean).join(" · "))}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button>`).join("")}</div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(t("nearbyTitle", { cat: t("cat_" + NEAR.cat) }))}</h2>`) + body + `<p class="foot">${ICON.info}OpenStreetMap</p>`;
@@ -527,7 +597,7 @@ function renderRoute() {
     let hero = "", body = "";
     if (R.busy) body = `<div class="loading"><span class="note">${t("calculating")}</span><div class="bar"></div></div>`;
     else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err"><span class="dot"></span><div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
-    else if (R.fast[R.mode]?.error) body = `<div class="insight err"><span class="dot"></span><div>${t("routeError")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
+    else if (R.fast[R.mode]?.error) body = `<div class="insight err"><span class="dot"></span><div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
       hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(c.time)}</span>${usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : ""}</div><span class="eta-sub">${t("arriveAt", { t: etaClock(c.time) })} · ${fmtDist(c.length)}</span></div>`;
       const lines = [];
@@ -539,6 +609,7 @@ function renderRoute() {
       }
       if (R.note) lines.push(esc(R.note));
       if (c.offRoad) lines.push(esc(t("farFromRoad")));
+      if (c.backup) lines.push(esc(t("fallbackRoute")));
       if (lines.length) body = `<div class="insight"><span class="dot"></span><div>${lines.join("<br>")}</div></div>`;
       if (R.mine) body += `<div class="legend"><span><i style="background:linear-gradient(90deg,var(--g1),var(--g2))"></i>${t("yourRoute")}</span><span><i style="background:var(--fast)"></i>${t("fastestRoute")}</span></div>`;
     }
@@ -596,26 +667,72 @@ function startDirections() {
 
 // ---------- Walk / bike / car (Valhalla, real streets) ----------
 let lastValhalla = 0;
+// OSRM gives maneuvers but no text, so we write the instruction ourselves in the app language.
+const OSRM_MOD = { left: 15, right: 10, "slight left": 16, "slight right": 9, "sharp left": 14, "sharp right": 11, straight: 8, uturn: 13 };
+async function osrm(locs, mode) {
+  const coordsStr = locs.map(l => `${l.lon.toFixed(6)},${l.lat.toFixed(6)}`).join(";");
+  let j;
+  try { j = await getJSON(`${OSRM[mode]}${coordsStr}?overview=full&geometries=polyline6&steps=true`, { timeout: 15000 }); }
+  catch (e) { if (e.status === 400) e.unreachable = true; throw e; }
+  if (j.code !== "Ok" || !j.routes?.length) throw Object.assign(new Error(j.code || "no route"), { unreachable: j.code === "NoRoute" });
+  const rt = j.routes[0], coords = decodePolyline(rt.geometry, 6), maneuvers = [];
+  let ferry = false, idx = 0;
+  const near = loc => { let best = idx, bd = Infinity; for (let i = idx; i < coords.length; i++) { const d = Math.abs(coords[i][0] - loc[0]) + Math.abs(coords[i][1] - loc[1]); if (d < bd) { bd = d; best = i; } if (d < 1e-7) break; } return best; };
+  rt.legs.forEach((leg, li) => leg.steps.forEach(s => {
+    const m = s.maneuver;
+    if (s.mode === "ferry") ferry = true;
+    if (m.type === "arrive" && li < rt.legs.length - 1) return;
+    if (m.type === "depart" && li > 0) return;
+    idx = near(m.location);
+    const name = s.name || s.ref || "";
+    let type = OSRM_MOD[m.modifier] ?? 8, dir = t("o_" + String(m.modifier || "straight").replace(" ", "_"));
+    if (m.type === "depart") { type = 1; dir = t("o_depart"); }
+    else if (m.type === "arrive") { type = 4; dir = t("o_arrive"); }
+    else if (/roundabout|rotary/.test(m.type)) { type = 26; dir = t("o_roundabout", { n: m.exit || 1 }); }
+    else if (m.type === "continue" || m.type === "new name") { if (!m.modifier || m.modifier === "straight") { type = 8; dir = t("o_straight"); } }
+    const text = name && m.type !== "arrive" ? t("o_onto", { dir, name }) : dir;
+    maneuvers.push({ type, instruction: text + ".", say: text, alert: "", length: s.distance / 1000, time: s.duration, begin: idx });
+  }));
+  if (ferry) throw Object.assign(new Error("water"), { unreachable: true, reason: "water" });
+  const end = pt(coords[coords.length - 1]), gap = km(end, locs[locs.length - 1]);
+  if (gap > (mode === "car" ? .3 : .5)) throw Object.assign(new Error("far"), { unreachable: true, reason: "far" });
+  return { time: rt.duration, length: rt.distance / 1000, coords, maneuvers, cum: cumulative(coords), ferry, offRoad: gap > .15 };
+}
 function costingOptions(mode, extra = {}) {
   // Step-free: Valhalla's wheelchair profile avoids steps; the step penalty makes stairs a last resort.
   // No mode "crosses the water": no ferries, so an island or the other shore is reported as unreachable.
   if (mode === "walk") return { use_ferry: 0, ...(access ? { type: "wheelchair", step_penalty: 43200 } : {}), ...extra };
   return { use_ferry: 0, ...extra };
 }
+const routeCache = new Map();
+// Valhalla first; if it is down (not "no path", just down), the OSRM backup. Step-free needs Valhalla's wheelchair profile, so no backup there.
 async function valhalla(locs, mode, extra = {}) {
+  const key = JSON.stringify([locs.map(l => [l.lat.toFixed(5), l.lon.toFixed(5), l.type || ""]), mode, access, lang, extra]);
+  if (routeCache.has(key)) return routeCache.get(key);
+  let route;
+  try { route = await valhallaOnce(locs, mode, extra); }
+  catch (e) {
+    if (e.unreachable || e.offline || (mode === "walk" && access)) throw e;
+    route = await osrm(locs, mode);
+    route.backup = true;
+  }
+  if (routeCache.size > 60) routeCache.delete(routeCache.keys().next().value);
+  routeCache.set(key, route);
+  return route;
+}
+async function valhallaOnce(locs, mode, extra) {
   const wait = 1100 - (Date.now() - lastValhalla); // public server: be gentle
   if (wait > 0) await sleep(wait);
   lastValhalla = Date.now();
   const costing = COSTING[mode];
   const body = { locations: locs, costing, costing_options: { [costing]: costingOptions(mode, extra) }, directions_options: { units: "kilometers", language: ROUTE_LANG[lang], directions_type: "instructions" } };
-  const r = await fetch(`${VALHALLA}?json=${encodeURIComponent(JSON.stringify(body))}`);
-  if (!r.ok) {
+  let j;
+  try { j = await getJSON(`${VALHALLA}?json=${encodeURIComponent(JSON.stringify(body))}`, { timeout: 15000 }); }
+  catch (e) {
     // 4xx = Valhalla found no path (water in the way, no road, point too far from any street…)
-    const err = new Error("route " + r.status);
-    err.unreachable = r.status >= 400 && r.status < 500 && r.status !== 429;
-    throw err;
+    if (e.status >= 400 && e.status < 500) e.unreachable = true;
+    throw e;
   }
-  const j = await r.json();
   const coords = [], maneuvers = [];
   let ferry = false;
   for (const leg of j.trip.legs) {
@@ -655,7 +772,7 @@ async function routeNow(fit = false) {
     }
   } catch (e) {
     if (seq !== R.seq) return;
-    if (!R.fast[mode]?.coords) R.fast[mode] = { error: true, unreachable: !!e.unreachable, reason: e.reason };
+    if (!R.fast[mode]?.coords) R.fast[mode] = { error: true, unreachable: !!e.unreachable, reason: e.reason, offline: !navigator.onLine };
     else R.note = t("routeError");
   }
   R.busy = false; rerenderSheet(); drawRoutes();
@@ -667,7 +784,7 @@ async function fillOtherModes(seq) {
   for (const m of ["walk", "bike", "car"]) {
     if (R.fast[m] || seq !== R.seq) continue;
     try { R.fast[m] = await valhalla([me, dest].map(p => ({ lat: p.lat, lon: p.lon })), m); }
-    catch (e) { R.fast[m] = { error: true, unreachable: !!e.unreachable, reason: e.reason }; }
+    catch (e) { if (!e.unreachable && !navigator.onLine) continue; R.fast[m] = { error: true, unreachable: !!e.unreachable, reason: e.reason }; }
     if (seq === R.seq) rerenderSheet();
   }
   if (!R.transit && seq === R.seq) { await loadTransit(); if (seq === R.seq) rerenderSheet(); }
@@ -708,9 +825,7 @@ async function loadTransit() {
 async function transitous() {
   const params = new URLSearchParams({ fromPlace: `${me.lat},${me.lon}`, toPlace: `${dest.lat},${dest.lon}`, numItineraries: "5", detailedTransfers: "false", pedestrianProfile: access ? "WHEELCHAIR" : "FOOT", language: lang });
   let j = null;
-  for (const url of TRANSITOUS) {
-    try { const r = await fetch(`${url}?${params}`); if (r.ok) { j = await r.json(); break; } } catch {}
-  }
+  for (const url of TRANSITOUS) { try { j = await getJSON(`${url}?${params}`, { timeout: 15000 }); break; } catch {} }
   if (!j) return [];
   return (j.itineraries || []).map(it => {
     const legs = (it.legs || []).map(l => {
@@ -813,7 +928,10 @@ function transitBody() {
 }
 
 // ---------- Turn-by-turn navigation ----------
-const NAV = { active: false, route: null, idx: 0, along: 0, off: 0, rerouting: false, watch: null, follow: true, spoken: new Set() };
+const NAV = { active: false, route: null, idx: 0, along: 0, off: 0, rerouting: false, watch: null, follow: true, spoken: new Set(), lastFix: 0, acc: 0, lastReroute: 0, lock: null, gpsTimer: 0 };
+// keep the screen on while navigating (re-acquired when you come back to the tab)
+async function keepAwake() { try { if (NAV.active && "wakeLock" in navigator && !NAV.lock) { NAV.lock = await navigator.wakeLock.request("screen"); NAV.lock.addEventListener("release", () => NAV.lock = null); } } catch {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
 let voiceOn = store.get("voice", true);
 const navtop = $("#navtop"), navbottom = $("#navbottom"), recenterBtn = $("#recenter");
 function speak(text) {
@@ -833,10 +951,15 @@ function startNav() {
   navtop.hidden = false; navbottom.hidden = false;
   drawRoutes();
   // our own GPS watch while navigating, so the camera follows us with heading and tilt
+  NAV.lastFix = Date.now();
   NAV.watch = navigator.geolocation.watchPosition(p => {
     me = { lat: p.coords.latitude, lon: p.coords.longitude, heading: p.coords.heading };
+    NAV.lastFix = Date.now(); NAV.acc = p.coords.accuracy || 0;
     updateNav();
-  }, () => {}, { enableHighAccuracy: true, maximumAge: 1000 });
+  }, () => renderNav(), { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+  clearInterval(NAV.gpsTimer);
+  NAV.gpsTimer = setInterval(() => { if (NAV.active) renderNav(); }, 5000); // shows "looking for GPS" when fixes stop coming
+  keepAwake();
   speak(route.maneuvers[0]?.say);
   updateNav(true);
 }
@@ -844,6 +967,9 @@ function stopNav() {
   NAV.active = false;
   if (NAV.watch != null) navigator.geolocation.clearWatch(NAV.watch);
   NAV.watch = null;
+  clearInterval(NAV.gpsTimer);
+  try { NAV.lock?.release(); } catch {}
+  NAV.lock = null;
   try { speechSynthesis.cancel(); } catch {}
   document.body.classList.remove("navigating");
   navtop.hidden = true; navbottom.hidden = true; recenterBtn.hidden = true;
@@ -856,6 +982,8 @@ function stopNav() {
 map.on("dragstart", e => { if (NAV.active && e.originalEvent) { NAV.follow = false; recenterBtn.hidden = false; } });
 recenterBtn.onclick = () => { NAV.follow = true; recenterBtn.hidden = true; updateNav(true); };
 async function reroute() {
+  if (Date.now() - NAV.lastReroute < 12000) return; // don't hammer the server while the GPS settles
+  NAV.lastReroute = Date.now();
   NAV.rerouting = true; renderNav();
   try {
     const r = await valhalla([{ lat: me.lat, lon: me.lon }, { lat: dest.lat, lon: dest.lon }], R.mode);
@@ -893,7 +1021,9 @@ function updateNav(first = false) {
   const { coords, cum } = NAV.route;
   const s = snapTo(me, coords, cum, Math.max(0, NAV.idx - 5));
   NAV.idx = s.seg; NAV.along = s.along;
-  NAV.off = s.off > (R.mode === "car" ? .06 : .04) ? NAV.off + 1 : 0;
+  // a fix with poor accuracy can't tell us we left the route
+  const tol = Math.max(R.mode === "car" ? .06 : .04, (NAV.acc || 0) / 1000);
+  NAV.off = s.off > tol ? NAV.off + 1 : 0;
   if (NAV.off >= 3 && !NAV.rerouting) return reroute();
   const total = cum[cum.length - 1];
   const here = pointAt(coords, cum, s.along), ahead = pointAt(coords, cum, Math.min(total, s.along + .04));
@@ -923,7 +1053,8 @@ function renderNav() {
       ? `<div class="navcard"><span class="arrow">${ICON.flag}</span><div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div></div></div>`
       : `<div class="navcard"><span class="arrow">${manIcon(next?.type)}</span><div><div class="dist">${fmtDist(dist)}</div><div class="ins">${esc(next?.instruction || "")}</div></div></div>
          ${after ? `<div class="navnext">${t("then")} ${manIcon(after.type)} <span>${esc(after.instruction)}</span></div>` : ""}`;
-  navbottom.innerHTML = `<div class="grow"><div class="big">${arrived ? "0 " + t("min") : fmtDur(leftS)}</div><div class="meta">${t("arriveAt", { t: etaClock(leftS) })} · ${fmtDist(leftKm)} ${t("remaining")}</div></div>
+  const gps = Date.now() - NAV.lastFix > 15000 ? `<div class="gps bad">${t("gpsLost")}</div>` : NAV.acc > 60 ? `<div class="gps">${t("gpsWeak")}</div>` : "";
+  navbottom.innerHTML = `<div class="grow"><div class="big">${arrived ? "0 " + t("min") : fmtDur(leftS)}</div><div class="meta">${t("arriveAt", { t: etaClock(leftS) })} · ${fmtDist(leftKm)} ${t("remaining")}</div>${gps}</div>
     <button class="vbtn" id="voiceBtn" type="button" aria-pressed="${voiceOn}" aria-label="${t("voice")}" title="${t("voice")}">${voiceOn ? ICON.speaker : ICON.mute}</button>
     <button class="exit" id="exitNav" type="button">${t("exit")}</button>`;
   $("#exitNav").onclick = stopNav;
