@@ -16,7 +16,7 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 - Lista "Lugares que quiero visitar": toca ♡ Guardar en cualquier lugar y lo encuentras en el botón Guardados (se guarda solo en tu teléfono).
 - "Turística" con tres niveles: 1 Lo básico (solo lo más famoso, con artículo en Wikipedia), 2 + Museos (museos, miradores y monumentos), 3 Todo. Solo cuenta sitios reales con nombre, cada uno una vez, y te dice cuáles son. "Con vistas" es aparte: miradores, jardines, fuentes, plazas y calles peatonales.
 - Si el celular cierra la app, al abrirla retoma tu última ruta.
-- Vibi, la mascota de Wayvibe (un pin parado sobre un mapa): te saluda con una animación al abrir la app, piensa mientras busca la ruta, se pone triste cuando no se puede llegar, duerme sin conexión y celebra con confeti cuando llegas.
+- Vibi, la mascota de Wayvibe (un pin redondito con un brote en la cabeza, parado sobre un mapa): te saluda con una animación al abrir la app, piensa mientras busca la ruta, se pone triste cuando no se puede llegar, duerme sin conexión y celebra con confeti cuando llegas.
 - Aguanta fallas: si un servidor no responde, reintenta y usa uno de respaldo (rutas con OSRM, búsqueda con Nominatim, lugares con otros espejos de Overpass, mapa con OpenStreetMap). Sin señal te avisa y reintenta solo cuando vuelve.
 - Durante la navegación mantiene la pantalla encendida y avisa si el GPS está débil o perdido.
 - Se puede instalar en el celular ("Agregar a pantalla de inicio") y abre sin conexión con los mapas que ya viste. Si la librería del mapa no carga, la busca en un segundo servidor, y si tu navegador no puede dibujar mapas te dice cómo arreglarlo en vez de dejar la pantalla en blanco.

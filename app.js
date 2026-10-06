@@ -167,9 +167,18 @@ async function getJSON(urls, { init, timeout = 12000, retries = 1, signal } = {}
   }
   throw last;
 }
+// Overpass can answer 200 with a "remark" saying it ran out of time or memory and returned only part of the data.
+// That half answer is treated as a failure so the next mirror gets a chance.
 async function overpassQuery(q) {
-  const j = await getJSON(OVERPASS, { init: { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }, timeout: 25000, retries: 0 });
-  return j.elements || [];
+  let last;
+  for (const url of OVERPASS) {
+    try {
+      const j = await getJSON(url, { init: { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }, timeout: 25000, retries: 0 });
+      if (j.remark && /error|timed out|timeout|out of memory/i.test(j.remark)) { last = new Error(j.remark); continue; }
+      return j.elements || [];
+    } catch (e) { last = e; if (e.offline || (e.status >= 400 && e.status < 500 && e.status !== 429)) throw e; }
+  }
+  throw last || new Error("overpass");
 }
 
 // ---------- Icons ----------
@@ -983,7 +992,7 @@ async function routeNow(fit = false) {
       if (seq !== R.seq) return;
       R.levelCounts = res?.levelCounts || null;
       if (res?.route) { R.mine = res.route; R.pois = res.pois; R.poiCount = res.count; }
-      else R.note = R.prefs.includes("tourist") && R.levelCounts && tourLevel < 3 ? t("noTourLevel", { n: tourLevel }) : t("nothingFound");
+      else R.note = res?.tooLong ? t("tooLongPrefs") : R.prefs.includes("tourist") && R.levelCounts && tourLevel < 3 ? t("noTourLevel", { n: tourLevel }) : t("nothingFound");
     }
   } catch (e) {
     if (seq !== R.seq) return;
@@ -1358,6 +1367,8 @@ async function personalized(O, D, mode, prefs, fast) {
   const lats = fast.coords.map(c => c[1]), lons = fast.coords.map(c => c[0]);
   const dLat = padKm / 111, dLon = padKm / (111 * Math.cos(O.lat * Math.PI / 180));
   const bbox = [Math.min(...lats) - dLat, Math.min(...lons) - dLon, Math.max(...lats) + dLat, Math.max(...lons) + dLon];
+  // very long trips would ask the server for a whole region; search only around the start and end then
+  if ((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) > .09) return { route: null, levelCounts: null, tooLong: true };
   const all = dedupe(await poisAlong(prefs, bbox));
   // a more touristy level may take you a bit further out of your way
   const lvlStretch = prefs.includes("tourist") ? [0, .8, 1, 1.35][tourLevel] : 1;
@@ -1389,8 +1400,15 @@ async function personalized(O, D, mode, prefs, fast) {
   wps.sort((a, b) => km(O, a) - km(O, b));
 
   const opts = prefs.includes("quiet") && mode === "bike" ? { use_roads: .1 } : prefs.includes("quiet") && mode === "car" ? { use_highways: 0 } : {};
-  let route = await valhalla([O, ...wps.map(w => ({ lat: w.lat, lon: w.lon, type: "through" })), D], mode, opts);
-  if (route.time > fast.time * 1.8 && wps.length > 1) route = await valhalla([O, { lat: wps[0].lat, lon: wps[0].lon, type: "through" }, D], mode, opts);
+  // a place inside a park or a building can be unreachable as a stop: drop stops one by one instead of failing
+  let route = null;
+  for (const stops of [wps, wps.slice(0, 1)]) {
+    try { route = await valhalla([O, ...stops.map(w => ({ lat: w.lat, lon: w.lon, type: "through" })), D], mode, opts); }
+    catch (e) { if (e.offline) throw e; route = null; continue; }
+    if (route.time > fast.time * 1.8 && stops.length > 1) continue;
+    break;
+  }
+  if (!route?.coords) return { route: null, levelCounts };
 
   const line = densify(route.coords, .03);
   const passed = pois.filter(p => nearLine(p, line, NEAR_KM[mode]));

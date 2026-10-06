@@ -303,7 +303,7 @@ body:has(.sheet:not([hidden])) .offline{bottom:auto;top:calc(76px + env(safe-are
 .vibi { width: 40px; height: 40px; flex: none; overflow: visible; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .vibi.big { width: 120px; height: 120px; }
 .vibi .v-body { transform-origin: 50px 100px; animation: v-bob 2.6s ease-in-out infinite; }
-.vibi .v-eyes { transform-origin: 50px 45px; animation: v-blink 4.2s infinite; }
+.vibi .v-eyes { transform-origin: 50px 56px; animation: v-blink 4.2s infinite; }
 .vibi.v-think .v-dots circle { animation: v-dot 1.2s ease-in-out infinite; }
 .vibi.v-think .v-dots circle:nth-child(2) { animation-delay: .2s; }
 .vibi.v-think .v-dots circle:nth-child(3) { animation-delay: .4s; }
@@ -388,7 +388,7 @@ body.picking .cats, body.picking .where, body.picking .hint { display: none !imp
 .splash h1 { margin: 10px 0 0; font: 800 30px/1.1 var(--display); letter-spacing: -.02em; animation: splash-up .5s ease .55s both; }
 .splash p { margin: 0; font-size: 17px; color: var(--ink-2); animation: splash-up .5s ease .7s both; }
 .splash small { margin-top: 18px; font-size: 13px; color: var(--muted); animation: splash-up .5s ease 1.4s both; }
-.vibi.v-wave .v-wave { transform-origin: 88px 54px; animation: v-wave .5s ease-in-out .9s 4 alternate; }
+.vibi.v-wave .v-wave { transform-origin: 89px 62px; animation: v-wave .5s ease-in-out .9s 4 alternate; }
 @keyframes v-wave { from { transform: rotate(-12deg); } to { transform: rotate(18deg); } }
 @keyframes splash-drop { 0% { transform: translateY(-70vh); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; } }
 @keyframes splash-ping { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
@@ -424,3 +424,5 @@ body.picking .cats, body.picking .where, body.picking .hint { display: none !imp
 .lvl-c { margin-top: 4px; font-size: 11.5px; font-weight: 700; color: #ea580c; }
 .splash-name { font: 800 40px/1 var(--display) !important; letter-spacing: -.03em; background: linear-gradient(120deg, var(--g1), var(--g2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .brand { cursor: pointer; }
+.vibi .v-sprout { transform-origin: 50px 12px; animation: v-sway 3s ease-in-out infinite; }
+@keyframes v-sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
