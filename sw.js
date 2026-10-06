@@ -1,8 +1,8 @@
 // Wayvibe service worker: the app opens without signal, and map tiles you already saw stay available.
 // Route/search APIs are never cached here; the app handles those itself.
-const APP = "wv-app-v1", TILES = "wv-tiles-v1", MAX_TILES = 1500;
+const APP = "wv-app-v2", TILES = "wv-tiles-v1", MAX_TILES = 1500;
 const SHELL = ["./", "index.html", "style.css", "app.js", "i18n.js", "icon.svg", "manifest.webmanifest",
-  "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"];
+  "mascot.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"];
 
 self.addEventListener("install", e => { e.waitUntil(caches.open(APP).then(c => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener("activate", e => {
@@ -21,7 +21,7 @@ self.addEventListener("fetch", e => {
   // style and tilejson point at dated tile sets, so they must stay fresh (network first)
   const freshMap = url.hostname === "tiles.openfreemap.org" && (/^\/styles\//.test(url.pathname) || /^\/[a-z]+$/.test(url.pathname));
   const isTile = (url.hostname === "tiles.openfreemap.org" && !freshMap) || url.hostname === "tile.openstreetmap.org" || url.hostname.endsWith("fonts.gstatic.com");
-  const isShell = freshMap || url.origin === location.origin || url.hostname === "unpkg.com" || url.hostname === "fonts.googleapis.com";
+  const isShell = freshMap || url.origin === location.origin || url.hostname === "unpkg.com" || url.hostname === "cdn.jsdelivr.net" || url.hostname === "fonts.googleapis.com";
   if (isTile) {
     // cache first: tiles rarely change and make the map usable offline
     e.respondWith(caches.open(TILES).then(async c => {

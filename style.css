@@ -298,3 +298,47 @@ body:has(.sheet:not([hidden])) .offline{bottom:auto;top:calc(76px + env(safe-are
 .navbottom .gps.bad{color:var(--bad)}
 .navbottom .gps::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px;animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
+
+/* ---------- Vibi, the buddy ---------- */
+.vibi { width: 40px; height: 40px; flex: none; overflow: visible; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.vibi.big { width: 120px; height: 120px; }
+.vibi .v-body { transform-origin: 50px 100px; animation: v-bob 2.6s ease-in-out infinite; }
+.vibi .v-eyes { transform-origin: 50px 45px; animation: v-blink 4.2s infinite; }
+.vibi.v-think .v-dots circle { animation: v-dot 1.2s ease-in-out infinite; }
+.vibi.v-think .v-dots circle:nth-child(2) { animation-delay: .2s; }
+.vibi.v-think .v-dots circle:nth-child(3) { animation-delay: .4s; }
+.vibi.v-sleep .v-body { animation-duration: 4s; }
+.vibi.v-sleep .v-z { animation: v-z 2.4s ease-in-out infinite; }
+.vibi.v-party .v-body { animation: v-jump .7s ease-in-out infinite; }
+.vibi.v-party .v-confetti { animation: v-pop 1.4s ease-in-out infinite; transform-origin: 50px 50px; }
+.vibi.v-sad .v-tear { animation: v-tear 2.4s ease-in infinite; }
+.vibi.hop .v-body { animation: v-hop .5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes v-bob { 50% { transform: translateY(-3px) scale(1.02, .98); } }
+@keyframes v-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@keyframes v-dot { 50% { opacity: .3; } }
+@keyframes v-z { 0%, 100% { opacity: .3; transform: translateY(4px); } 50% { opacity: 1; transform: none; } }
+@keyframes v-jump { 50% { transform: translateY(-8px); } }
+@keyframes v-pop { 50% { transform: scale(1.12) rotate(6deg); } }
+@keyframes v-tear { 0%, 40% { opacity: 0; transform: none; } 60% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
+@keyframes v-hop { 0% { transform: none; } 40% { transform: translateY(-14px) rotate(-6deg); } 70% { transform: translateY(0) scale(1.08, .92); } 100% { transform: none; } }
+
+.hint-buddy { display: grid; place-items: center; }
+.hint-buddy .vibi { width: 58px; height: 58px; }
+.hint b { display: block; color: var(--ink); font-weight: 700; margin-bottom: 1px; }
+.insight > .vibi { width: 46px; height: 46px; margin: -6px 0 -6px -4px; }
+.loading-row { display: flex; align-items: center; gap: 10px; }
+.loading-row .vibi { width: 44px; height: 44px; }
+.ask-msg { display: flex; align-items: center; gap: 8px; }
+.ask-msg .vibi { width: 28px; height: 28px; }
+.offline { display: flex; align-items: center; gap: 10px; padding-left: 10px; }
+.offline::before { display: none; }
+.offline .vibi { width: 32px; height: 32px; }
+.navcard.arrived { grid-template-columns: 72px 1fr; background: linear-gradient(135deg, #1e3a8a, #5b21b6); }
+.navcard.arrived .vibi { width: 72px; height: 72px; }
+.navcard .cheer { margin-top: 6px; font-size: 14px; color: #c7d2fe; font-weight: 500; }
+.fatal { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; text-align: center; background: var(--bg); color: var(--ink); font: 500 16px/1.45 var(--body); }
+.fatal p { max-width: 320px; margin: 0; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 90; overflow: hidden; }
+.confetti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation: v-fall linear forwards; }
+@keyframes v-fall { to { transform: translate(var(--dx), 105vh) rotate(var(--r)); opacity: .9; } }
+@media (prefers-reduced-motion: reduce) { .vibi *, .vibi .v-body { animation: none !important; } }

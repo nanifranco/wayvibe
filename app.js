@@ -1,4 +1,5 @@
 import { LANGS, T, PREF_WORDS, ACCESS_WORDS, ROUTE_LANG } from "./i18n.js";
+import { buddy, celebrate } from "./mascot.js";
 
 // ---------- Services (all free, no key) ----------
 // Map: OpenFreeMap · Search: Photon · Address: Nominatim · Walk/bike/car: Valhalla (FOSSGIS)
@@ -56,8 +57,21 @@ langSel.onchange = () => {
 applyI18n();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 
+// ---------- Safety net: an unexpected error never leaves the app silent or stuck ----------
+let lastOops = 0;
+function oops(err) {
+  if (!err || err.name === "AbortError" || /ResizeObserver|Script error/i.test(String(err.message || err))) return;
+  console.error(err);
+  if (Date.now() - lastOops < 15000) return;
+  lastOops = Date.now();
+  toast(t("oops"));
+  try { if (R.busy) { R.busy = false; rerenderSheet(); } } catch {} // never leave a spinner running forever
+}
+addEventListener("error", e => oops(e.error || e));
+addEventListener("unhandledrejection", e => oops(e.reason));
+
 // ---------- Connection ----------
-function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.textContent = t("offline"); }
+function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${buddy("sleep")}<span>${t("offline")}</span>`; }
 addEventListener("offline", renderOffline);
 addEventListener("online", () => {
   renderOffline(); toast(t("backOnline"));
@@ -201,6 +215,21 @@ function setVibe(key) {
 }
 
 // ---------- Map ----------
+// The map library comes from a CDN; if that CDN is blocked or down, try a second one.
+async function ensureMapLib() {
+  if (window.maplibregl) return true;
+  const base = "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/";
+  const css = document.createElement("link"); css.rel = "stylesheet"; css.href = base + "maplibre-gl.css"; document.head.appendChild(css);
+  try { await new Promise((ok, no) => { const s = document.createElement("script"); s.src = base + "maplibre-gl.js"; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); } catch {}
+  return !!window.maplibregl;
+}
+function hasWebGL() { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } }
+// When there is no way to draw a map, say why and how to fix it instead of showing a blank screen
+function fatal(key) {
+  document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${buddy("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
+}
+if (!(await ensureMapLib())) { fatal("noMapLib"); throw new Error("map library unavailable"); }
+if (!hasWebGL()) { fatal("noMap"); throw new Error("WebGL unavailable"); }
 const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const map = new maplibregl.Map({
   container: "map",
@@ -304,6 +333,8 @@ function renderWhere() {
 // Long-press has no visible signifier on a map, so we teach it once.
 function maybeHint() {
   if (store.get("hint", false) || dest || view) return;
+  $("#hintBuddy").innerHTML = buddy("happy");
+  $("#hintText").innerHTML = `<b>${t("hello")}</b> ${t("hintPress")}`;
   $("#hint").hidden = false;
 }
 $("#hintOk").onclick = () => { $("#hint").hidden = true; store.set("hint", true); };
@@ -562,8 +593,8 @@ function renderNearby() {
   const c = CATS[NEAR.cat];
   let body;
   if (NEAR.busy) body = `<p class="note">${t("searching")}</p><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
-  else if (NEAR.error) body = `<div class="insight err"><span class="dot"></span><div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
-  else if (!NEAR.items.length) body = `<div class="insight"><span class="dot"></span><div>${t("nearbyNone")}</div></div>`;
+  else if (NEAR.error) body = `<div class="insight err">${buddy("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
+  else if (!NEAR.items.length) body = `<div class="insight">${buddy("think")}<div>${t("nearbyNone")}</div></div>`;
   else body = `<div class="places" role="list">${NEAR.items.map((p, i) => `<button class="sug" type="button" role="listitem" data-i="${i}"><span class="ic" style="color:${c.color}">${ICON[c.icon]}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([p.sub, p.tags.wheelchair === "yes" ? "♿ " + t("wc_yes") : ""].filter(Boolean).join(" · "))}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button>`).join("")}</div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(t("nearbyTitle", { cat: t("cat_" + NEAR.cat) }))}</h2>`) + body + `<p class="foot">${ICON.info}OpenStreetMap</p>`;
   sheetBody.querySelectorAll(".places .sug").forEach(b => b.onclick = () => choose(NEAR.items[+b.dataset.i]));
@@ -595,9 +626,9 @@ function renderRoute() {
   else {
     const c = current();
     let hero = "", body = "";
-    if (R.busy) body = `<div class="loading"><span class="note">${t("calculating")}</span><div class="bar"></div></div>`;
-    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err"><span class="dot"></span><div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
-    else if (R.fast[R.mode]?.error) body = `<div class="insight err"><span class="dot"></span><div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
+    if (R.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
+    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${buddy("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
+    else if (R.fast[R.mode]?.error) body = `<div class="insight err">${buddy("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
       hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(c.time)}</span>${usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : ""}</div><span class="eta-sub">${t("arriveAt", { t: etaClock(c.time) })} · ${fmtDist(c.length)}</span></div>`;
       const lines = [];
@@ -617,7 +648,7 @@ function renderRoute() {
     const prefs = `<div><p class="q">${t("howToGo")}</p>
       <div class="prefs" role="group" aria-label="${esc(t("howToGo"))}">${PREFS.map(p => `<button class="pref" type="button" data-p="${p}" aria-pressed="${active.includes(p)}" style="--c1:${VIBES[p][0]};--c2:${VIBES[p][1]}"><i>${ICON[p]}</i>${t(p)}${ICON.check}</button>`).join("")}</div>
       <form class="ask" id="askForm"><input id="ask" maxlength="60" placeholder="${esc(t("askPlaceholder"))}" aria-label="${esc(t("howToGo"))}" value="${esc(R.askText)}"><button type="submit">OK</button></form>
-      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${esc(R.askMsg.text)}</p>` : ""}</div>`;
+      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
     const ready = c?.coords && !R.busy;
     const label = R.steps ? t("hideSteps") : t("steps");
@@ -908,9 +939,9 @@ function stopAccess(v) {
   return `<span>${t("stop_unknown")}</span>`;
 }
 function transitBody() {
-  if (R.busy) return `<div class="loading"><span class="note">${t("transitLoading")}</span><div class="bar"></div></div>`;
+  if (R.busy) return `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
   const items = R.transit?.items || [];
-  if (!items.length) return `<div class="insight err"><span class="dot"></span><div>${t("noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
+  if (!items.length) return `<div class="insight err">${buddy("sad")}<div>${t("noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
   const it = items[R.itin] || items[0], est = !!it.estimated, ap = est ? "≈ " : "";
   const tr = it.transfers === 0 ? t("direct") : it.transfers === 1 ? t("oneTransfer") : t("transfers", { n: it.transfers });
   const badges = (est ? `<span class="badge est">${ICON.info}${t("estShort")}</span>` : "") + (usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : "");
@@ -1043,14 +1074,14 @@ function renderNav() {
   const dist = next ? Math.max(0, cum[Math.min(next.begin, cum.length - 1)] - along) : 0;
   // feedback without looking: a heads-up first, then the instruction itself right before the turn
   const near = R.mode === "car" ? .15 : .035, early = R.mode === "car" ? .5 : .15;
-  if (arrived && !NAV.spoken.has("end")) { NAV.spoken.add("end"); speak(t("arrived")); navigator.vibrate?.([80, 60, 80]); }
+  if (arrived && !NAV.spoken.has("end")) { NAV.spoken.add("end"); speak(t("arrived")); navigator.vibrate?.([80, 60, 80]); celebrate(); }
   else if (next && dist <= near && !NAV.spoken.has(k + "p")) { NAV.spoken.add(k + "p"); NAV.spoken.add(k + "a"); speak(next.say); navigator.vibrate?.(120); }
   else if (next && dist <= early && dist > near && !NAV.spoken.has(k + "a")) { NAV.spoken.add(k + "a"); speak(next.alert || next.say); }
 
   navtop.innerHTML = NAV.rerouting
     ? `<div class="navcard"><span class="arrow">${ICON.round}</span><div><div class="ins">${t("rerouting")}</div></div></div>`
     : arrived
-      ? `<div class="navcard"><span class="arrow">${ICON.flag}</span><div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div></div></div>`
+      ? `<div class="navcard arrived">${buddy("party")}<div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div><div class="cheer">${t("cheer")}</div></div></div>`
       : `<div class="navcard"><span class="arrow">${manIcon(next?.type)}</span><div><div class="dist">${fmtDist(dist)}</div><div class="ins">${esc(next?.instruction || "")}</div></div></div>
          ${after ? `<div class="navnext">${t("then")} ${manIcon(after.type)} <span>${esc(after.instruction)}</span></div>` : ""}`;
   const gps = Date.now() - NAV.lastFix > 15000 ? `<div class="gps bad">${t("gpsLost")}</div>` : NAV.acc > 60 ? `<div class="gps">${t("gpsWeak")}</div>` : "";
