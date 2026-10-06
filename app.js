@@ -526,7 +526,7 @@ function renderRoute() {
     const c = current();
     let hero = "", body = "";
     if (R.busy) body = `<div class="loading"><span class="note">${t("calculating")}</span><div class="bar"></div></div>`;
-    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err"><span class="dot"></span><div><b>${t("unreachable_" + R.mode)}</b></div></div>`;
+    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err"><span class="dot"></span><div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
     else if (R.fast[R.mode]?.error) body = `<div class="insight err"><span class="dot"></span><div>${t("routeError")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
       hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(c.time)}</span>${usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : ""}</div><span class="eta-sub">${t("arriveAt", { t: etaClock(c.time) })} · ${fmtDist(c.length)}</span></div>`;
@@ -539,7 +539,6 @@ function renderRoute() {
       }
       if (R.note) lines.push(esc(R.note));
       if (c.offRoad) lines.push(esc(t("farFromRoad")));
-      if (c.ferry) lines.push(esc(t("ferry")));
       if (lines.length) body = `<div class="insight"><span class="dot"></span><div>${lines.join("<br>")}</div></div>`;
       if (R.mine) body += `<div class="legend"><span><i style="background:linear-gradient(90deg,var(--g1),var(--g2))"></i>${t("yourRoute")}</span><span><i style="background:var(--fast)"></i>${t("fastestRoute")}</span></div>`;
     }
@@ -551,7 +550,7 @@ function renderRoute() {
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
     const ready = c?.coords && !R.busy;
     const label = R.steps ? t("hideSteps") : t("steps");
-    main = hero + (R.fast[R.mode]?.error ? "" : `<div class="actions"><button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button><button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`) + body + steps + prefs;
+    main = hero + (R.fast[R.mode]?.error ? "" : `<div class="actions"><button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button><button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`) + body + steps + (R.fast[R.mode]?.unreachable ? "" : prefs);
   }
   // order follows the questions you answer: how you travel, whether you need step-free, then the result and the kind of route
   sheetBody.innerHTML = head + modes + accessSw + main + `<p class="foot">${ICON.shield}${t("realRoutes")}</p>`;
@@ -599,10 +598,9 @@ function startDirections() {
 let lastValhalla = 0;
 function costingOptions(mode, extra = {}) {
   // Step-free: Valhalla's wheelchair profile avoids steps; the step penalty makes stairs a last resort.
-  // Walking and cycling never "cross the water": no ferries, so an island or the other shore is reported as unreachable.
+  // No mode "crosses the water": no ferries, so an island or the other shore is reported as unreachable.
   if (mode === "walk") return { use_ferry: 0, ...(access ? { type: "wheelchair", step_penalty: 43200 } : {}), ...extra };
-  if (mode === "bike") return { use_ferry: 0, ...extra };
-  return extra;
+  return { use_ferry: 0, ...extra };
 }
 async function valhalla(locs, mode, extra = {}) {
   const wait = 1100 - (Date.now() - lastValhalla); // public server: be gentle
@@ -629,10 +627,13 @@ async function valhalla(locs, mode, extra = {}) {
       maneuvers.push({ type: m.type, instruction: m.instruction, say: m.verbal_pre_transition_instruction || m.instruction, alert: m.verbal_transition_alert_instruction || "", length: m.length, time: m.time, begin: m.begin_shape_index + offset });
     }
   }
-  if (ferry && mode !== "car") { const err = new Error("ferry"); err.unreachable = true; throw err; }
-  // the route can only start/end on a street: if the requested point is far from it, say so
-  const end = pt(coords[coords.length - 1]), want = locs[locs.length - 1];
-  const offRoad = km(end, want) > .25;
+  const fail = reason => { const err = new Error(reason); err.unreachable = true; err.reason = reason; return err; };
+  if (ferry) throw fail("water");
+  // A route can only end on a way this mode can use. If that is far from the point you asked for
+  // (on water, inside a park for a car, a pedestrian zone…), the trip isn't possible this way.
+  const end = pt(coords[coords.length - 1]), want = locs[locs.length - 1], gap = km(end, want);
+  if (gap > (mode === "car" ? .3 : .5)) throw fail("far");
+  const offRoad = gap > .15;
   return { time: j.trip.summary.time, length: j.trip.summary.length, coords, maneuvers, cum: cumulative(coords), ferry, offRoad };
 }
 
@@ -654,7 +655,7 @@ async function routeNow(fit = false) {
     }
   } catch (e) {
     if (seq !== R.seq) return;
-    if (!R.fast[mode]?.coords) R.fast[mode] = { error: true, unreachable: !!e.unreachable };
+    if (!R.fast[mode]?.coords) R.fast[mode] = { error: true, unreachable: !!e.unreachable, reason: e.reason };
     else R.note = t("routeError");
   }
   R.busy = false; rerenderSheet(); drawRoutes();
@@ -666,7 +667,7 @@ async function fillOtherModes(seq) {
   for (const m of ["walk", "bike", "car"]) {
     if (R.fast[m] || seq !== R.seq) continue;
     try { R.fast[m] = await valhalla([me, dest].map(p => ({ lat: p.lat, lon: p.lon })), m); }
-    catch (e) { R.fast[m] = { error: true, unreachable: !!e.unreachable }; }
+    catch (e) { R.fast[m] = { error: true, unreachable: !!e.unreachable, reason: e.reason }; }
     if (seq === R.seq) rerenderSheet();
   }
   if (!R.transit && seq === R.seq) { await loadTransit(); if (seq === R.seq) rerenderSheet(); }
