@@ -55,7 +55,19 @@ langSel.onchange = () => {
   else rerenderSheet();
 };
 applyI18n();
-if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+// Updates: check for a new version on every open and whenever you come back to the app; when the new worker takes over, reload once.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloading || NAV?.active) return;
+    reloading = true; location.reload();
+  });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
 
 // ---------- Safety net: an unexpected error never leaves the app silent or stuck ----------
 let lastOops = 0;

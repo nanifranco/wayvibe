@@ -2,6 +2,7 @@
 // It never blocks the app: it leaves when the map is ready (at least ~2 s so it reads), on tap, or after 4.5 s at most.
 import { buddy } from "./mascot.js";
 import { T, LANGS } from "./i18n.js";
+export const VERSION = "2026.10.06-6"; // shown on the greeting so you can tell which version you have
 
 const el = document.getElementById("splash");
 if (el) {
@@ -16,6 +17,7 @@ if (el) {
       <h1>${hello}</h1>
       <p>${tr("splashSub")}</p>
       <small>${tr("tapToSkip")}</small>
+      <span class="splash-ver">v${VERSION}</span>
     </div>`;
   el.setAttribute("role", "status");
   el.removeAttribute("aria-hidden");

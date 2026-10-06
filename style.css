@@ -405,3 +405,4 @@ body.picking .cats, body.picking .where, body.picking .hint { display: none !imp
 .saved-pin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; background: #e11d48; color: #fff; display: grid; place-items: center; padding: 0; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 .saved-pin svg { width: 18px; height: 18px; }
 .poi-names { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.splash-ver { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; font-size: 11.5px; color: var(--muted); opacity: .7; }

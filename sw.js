@@ -1,6 +1,8 @@
 // Wayvibe service worker: the app opens without signal, and map tiles you already saw stay available.
 // Route/search APIs are never cached here; the app handles those itself.
-const APP = "wv-app-v5", TILES = "wv-tiles-v1", MAX_TILES = 1500;
+// VERSION is bumped on every release so phones pick up the new worker.
+const VERSION = "2026.10.06-6";
+const APP = "wv-app-v6", TILES = "wv-tiles-v1", MAX_TILES = 1500;
 const SHELL = ["./", "index.html", "style.css", "app.js", "i18n.js", "icon.svg", "manifest.webmanifest",
   "mascot.js", "splash.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js", "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"];
 
@@ -33,7 +35,9 @@ self.addEventListener("fetch", e => {
     }));
   } else if (isShell) {
     // network first so updates arrive at once; cache when there is no signal
-    e.respondWith(fetch(req).then(res => {
+    // our own files skip the browser's HTTP cache (GitHub Pages caches them for 10 min), so a new version shows on the next open
+    const own = url.origin === location.origin;
+    e.respondWith((own ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req)).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(APP).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req).then(hit => hit || (req.mode === "navigate" ? caches.match("index.html") : Response.error()))));
