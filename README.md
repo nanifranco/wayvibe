@@ -24,10 +24,10 @@ Son servidores públicos con límites de uso justo. Si la app crece, conviene us
 
 ## Ejecutar en local
 
-Es una web estática, sin compilación:
+Es una web estática, sin compilación. Los archivos están en `docs/` (GitHub Pages publica esa carpeta):
 
 ```sh
-python3 -m http.server 8000
+python3 -m http.server 8000 -d docs
 ```
 
 Abre http://localhost:8000. La ubicación solo funciona en `localhost` o con HTTPS.
