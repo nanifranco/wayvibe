@@ -77,7 +77,7 @@ addEventListener("online", () => {
   renderOffline(); toast(t("backOnline"));
   if (!me) geo.trigger();
   // retry whatever failed while we were offline
-  if (view === "route" && dest && me) { for (const m of Object.keys(R.fast)) if (R.fast[m]?.error && !R.fast[m].unreachable) delete R.fast[m]; if (R.transit && !R.transit.items.length) R.transit = null; routeNow(); }
+  if (view === "route" && dest && origin()) { for (const m of Object.keys(R.fast)) if (R.fast[m]?.error && !R.fast[m].unreachable) delete R.fast[m]; if (R.transit && !R.transit.items.length) R.transit = null; routeNow(); }
   else if (view === "nearby" && NEAR.error) nearby(NEAR.cat);
 });
 addEventListener("load", renderOffline);
@@ -166,6 +166,8 @@ const ICON = {
   bus: S(`<rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 11h14M8 21v-3M16 21v-3"/><circle cx="8.5" cy="14.5" r=".8"/><circle cx="15.5" cy="14.5" r=".8"/>`),
   pin: S(`<path d="M12 21s-7-7.2-7-12a7 7 0 0 1 14 0c0 4.8-7 12-7 12Z"/><circle cx="12" cy="9" r="2.5"/>`),
   clock: S(`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`),
+  locate: S(`<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>`),
+  swap: S(`<path d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l-3.5-3.5M17 20l3.5-3.5"/>`),
   fastest: S(`<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z"/>`),
   scenic: S(`<path d="M3 8h3l2-3h8l2 3h3v11H3Z"/><circle cx="12" cy="13" r="3.5"/>`),
   shade: S(`<path d="M12 22v-6M7 16h10l-2.5-4H16l-4-6-4 6h1.5Z"/>`),
@@ -226,6 +228,7 @@ async function ensureMapLib() {
 function hasWebGL() { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } }
 // When there is no way to draw a map, say why and how to fix it instead of showing a blank screen
 function fatal(key) {
+  dispatchEvent(new Event("wv-ready"));
   document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${buddy("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
 }
 if (!(await ensureMapLib())) { fatal("noMapLib"); throw new Error("map library unavailable"); }
@@ -241,10 +244,14 @@ map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-
 const geo = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true, timeout: 15000 }, trackUserLocation: true, showAccuracyCircle: true, showUserHeading: true });
 map.addControl(geo, "bottom-right");
 let rasterFallback = false;
-darkMQ.addEventListener("change", () => { if (!rasterFallback) map.setStyle(darkMQ.matches ? STYLE_DARK : STYLE_LIGHT); });
-function useRasterMap() { if (rasterFallback) return; rasterFallback = true; map.setStyle(STYLE_RASTER); }
-map.on("error", e => { if (!map.isStyleLoaded() && /style|openfreemap/i.test(String(e?.error?.message || e?.error?.url || ""))) useRasterMap(); });
-setTimeout(() => { if (!map.isStyleLoaded() && navigator.onLine) useRasterMap(); }, 10000);
+// diff:false so "style.load" always fires and our route layers are added back on the new style
+let styleOk = false;
+map.on("style.load", () => { styleOk = true; });
+darkMQ.addEventListener("change", () => { if (!rasterFallback) map.setStyle(darkMQ.matches ? STYLE_DARK : STYLE_LIGHT, { diff: false }); });
+function useRasterMap() { if (rasterFallback) return; rasterFallback = true; map.setStyle(STYLE_RASTER, { diff: false }); }
+// only when the style itself never arrived; a single failed tile or font is not a reason to swap the whole map
+map.on("error", () => { if (!styleOk) useRasterMap(); });
+setTimeout(() => { if (!styleOk && navigator.onLine) useRasterMap(); }, 10000);
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 function setLabelLanguage() {
@@ -261,7 +268,8 @@ function ensureLayers() {
   const [a, b] = [cssVar("--g1") || VIBES.fastest[0], cssVar("--g2") || VIBES.fastest[1]];
   const casing = cssVar("--casing") || "#fff", fast = cssVar("--fast") || "#94a3b8";
   const round = { "line-cap": "round", "line-join": "round" };
-  const add = l => { if (!map.getLayer(l.id)) map.addLayer(l); };
+  // one layer failing (e.g. a style without label fonts) must not take the route lines down with it
+  const add = l => { try { if (!map.getLayer(l.id)) map.addLayer(l); } catch (e) { console.warn("layer", l.id, e.message); } };
   add({ id: "wv-fast", type: "line", source: "wv-fast", layout: round, paint: { "line-color": fast, "line-width": 5, "line-opacity": .8, "line-dasharray": [.1, 1.8] } });
   add({ id: "wv-mine-casing", type: "line", source: "wv-mine", layout: round, paint: { "line-color": casing, "line-width": 11 } });
   add({ id: "wv-mine", type: "line", source: "wv-mine", layout: round, paint: { "line-width": 7, "line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, a, 1, b] } });
@@ -275,7 +283,17 @@ function ensureLayers() {
   drawRoutes(); drawNearby();
 }
 map.on("style.load", () => { setLabelLanguage(); ensureLayers(); });
-map.on("load", () => geo.trigger());
+map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); });
+if (location.hostname === "localhost") window.wvDebug = { map, get R() { return R; } };
+function resumeTrip() {
+  const tr = store.get("trip");
+  if (!tr?.dest || Date.now() - tr.at > 3 * 3600e3) return;
+  R.mode = tr.mode || "walk"; R.prefs = tr.prefs || [];
+  choose(tr.dest);
+  if (tr.from) { from = tr.from; fromMarker = new maplibregl.Marker({ element: startEl() }).setLngLat([from.lon, from.lat]).addTo(map); }
+  view = "route"; routeNow(true);
+  toast(t("resumed"));
+}
 map.on("click", "wv-near", e => { const i = e.features?.[0]?.properties?.i; if (i != null && NEAR.items[i]) choose(NEAR.items[i]); });
 map.on("mouseenter", "wv-near", () => map.getCanvas().style.cursor = "pointer");
 map.on("mouseleave", "wv-near", () => map.getCanvas().style.cursor = "");
@@ -291,6 +309,8 @@ geo.on("geolocate", e => {
     reverse(me.lat, me.lon).then(showWhere);
   }
   maybeHint();
+  // directions were opened before the GPS answered: route now that we know where you are
+  if (view === "route" && dest && !from && !R.busy && !R.fast.walk && !R.fast.bike && !R.fast.car && !R.transit) routeNow(true);
 });
 geo.on("error", () => { if (!me) { locState = "off"; renderWhere(); } });
 
@@ -334,7 +354,7 @@ function renderWhere() {
 function maybeHint() {
   if (store.get("hint", false) || dest || view) return;
   $("#hintBuddy").innerHTML = buddy("happy");
-  $("#hintText").innerHTML = `<b>${t("hello")}</b> ${t("hintPress")}`;
+  $("#hintText").textContent = t("hintPress"); // the splash already said hello
   $("#hint").hidden = false;
 }
 $("#hintOk").onclick = () => { $("#hint").hidden = true; store.set("hint", true); };
@@ -418,15 +438,16 @@ async function search(q) {
   catch (e) { if (e.name === "AbortError") throw e; return nominatimSearch(q); }
 }
 function renderSugs() {
-  const head = sugMode === "recent" ? `<div class="sugs-h">${t("recent")}</div>` : "";
+  const head = sugMode === "recent" ? `<div class="sugs-h">${picking ? t("fromPlaceholder") : t("recent")}</div>` : "";
   if (!sugItems.length) sugs.innerHTML = `<div class="sug-empty">${t("noResults")}</div>`;
-  else sugs.innerHTML = head + sugItems.map((s, i) => `<button class="sug" type="button" role="option" aria-selected="${i === sugIdx}" data-i="${i}"><span class="ic">${sugMode === "recent" ? ICON.clock : ICON.pin}</span><span style="min-width:0"><span class="nm">${esc(s.name)}</span><span class="sub">${esc(s.sub)}</span></span><span class="d">${me ? fmtDist(km(me, s)) : ""}</span></button>`).join("");
+  else sugs.innerHTML = head + sugItems.map((s, i) => `<button class="sug" type="button" role="option" aria-selected="${i === sugIdx}" data-i="${i}"><span class="ic">${s.isMe ? ICON.locate : sugMode === "recent" ? ICON.clock : ICON.pin}</span><span style="min-width:0"><span class="nm">${esc(s.name)}</span><span class="sub">${esc(s.sub)}</span></span><span class="d">${me && !s.isMe ? fmtDist(km(me, s)) : ""}</span></button>`).join("");
   sugs.hidden = false; qEl.setAttribute("aria-expanded", "true");
   sugs.querySelectorAll(".sug").forEach(b => b.onclick = () => choose(sugItems[+b.dataset.i]));
 }
 function hideSugs() { sugs.hidden = true; qEl.setAttribute("aria-expanded", "false"); sugIdx = -1; }
 function showRecents() {
-  const rec = store.get("recent", []);
+  const rec = store.get("recent", []).filter(r => !picking || !dest || km(r, dest) > .05);
+  if (picking && me && !qEl.value.trim()) rec.unshift({ lat: me.lat, lon: me.lon, name: t("useMyLocation"), sub: whereAddr?.title || "", isMe: true });
   if (!rec.length || qEl.value.trim()) return;
   sugMode = "recent"; sugItems = rec; sugIdx = -1; renderSugs();
 }
@@ -444,7 +465,7 @@ qEl.addEventListener("keydown", e => {
   if (sugs.hidden || !sugItems.length) return;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault(); sugIdx = (sugIdx + (e.key === "ArrowDown" ? 1 : sugItems.length - 1)) % sugItems.length; renderSugs();
-  } else if (e.key === "Escape") hideSugs();
+  } else if (e.key === "Escape") { hideSugs(); if (picking) pickbar.querySelector("button").click(); }
 });
 $("#form").addEventListener("submit", async e => {
   e.preventDefault();
@@ -479,11 +500,15 @@ async function pickPoint(ll) {
   choose(p, false);
   const a = await reverse(p.lat, p.lon);
   if (a && dest === p) { p.name = a.name || a.title; p.sub = a.sub; qEl.value = p.name; rerenderSheet(); }
+  else if (a && from === p) { p.name = a.name || a.title; p.sub = a.sub; rerenderSheet(); }
 }
 
 // ---------- Destination ----------
 const sheet = $("#sheet"), sheetBody = $("#sheetBody");
 let dest = null, destMarker = null, view = null; // view: "nearby" | "place" | "route"
+// Starting point: null means "my location". picking is true while you choose it.
+let from = null, fromMarker = null, picking = false;
+const origin = () => from || me;
 const R = { mode: "walk", prefs: [], fast: {}, mine: null, pois: [], poiCount: {}, busy: false, note: "", seq: 0, steps: false, transit: null, itin: 0, askText: "", askMsg: null };
 let access = store.get("access", false);
 
@@ -494,6 +519,8 @@ function pinEl() {
   return el;
 }
 function choose(p, fly = true) {
+  if (!p || !isFinite(p.lat) || !isFinite(p.lon)) return; // a broken search result must never break the map
+  if (picking) return setFrom(p.isMe ? null : p);
   hideSugs(); qEl.blur(); $("#hint").hidden = true;
   dest = p; view = "place";
   qEl.value = p.name; clearQ.hidden = false;
@@ -518,6 +545,8 @@ async function loadDetails(p) {
 function closeAll(clearNear = true) {
   if (NAV.active) stopNav();
   dest = null; view = null; destMarker?.remove(); destMarker = null;
+  from = null; fromMarker?.remove(); fromMarker = null; if (picking) endPick();
+  store.set("trip", null);
   if (clearNear) { NEAR.cat = null; NEAR.items = []; renderCats(); }
   resetRoute(); drawNearby(); sheet.hidden = true; setVibe("fastest");
 }
@@ -617,7 +646,13 @@ function renderRoute() {
     const no = m !== "transit" && R.fast[m]?.unreachable;
     return `<button class="mode${no ? " no" : ""}" type="button" data-m="${m}" aria-pressed="${R.mode === m}">${ICON[m]}<b>${v ? est + fmtDur(v) : no ? t("notPossible") : err ? "—" : "…"}</b><span>${t(m)}</span></button>`;
   };
-  const head = headRow(`<span class="kicker">${t("from")}</span><h2 class="title">${esc(dest.name)}</h2>`);
+  const fromName = from ? from.name : me ? t("myLocation") : "";
+  const head = headRow(`<h2 class="title">${esc(dest.name)}</h2>`) +
+    `<div class="fromto">
+      <button class="ft-row" id="fromBtn" type="button" aria-label="${esc(t("chooseStart"))}"><i class="ft-dot start" aria-hidden="true"></i><span class="ft-tx"><small>${t("fromLabel")}</small><b class="${fromName ? "" : "ft-empty"}">${esc(fromName || t("chooseStart"))}</b></span><span class="ft-edit">${t("change")}</span></button>
+      <div class="ft-row"><i class="ft-dot end" aria-hidden="true"></i><span class="ft-tx"><small>${t("toLabel")}</small><b>${esc(dest.name)}</b></span></div>
+      <button class="ft-swap" id="swapBtn" type="button" aria-label="${esc(t("swap"))}" title="${esc(t("swap"))}" ${origin() ? "" : "disabled"}>${ICON.swap}</button>
+    </div>`;
   const modes = `<div><p class="q">${t("qMode")}</p><div class="modes" role="group" aria-label="${esc(t("qMode"))}">${["walk", "bike", "car", "transit"].map(modeBtn).join("")}</div></div>`;
   const accessSw = (R.mode === "walk" || R.mode === "transit") ? `<div><button class="access" id="accessSw" type="button" role="switch" aria-checked="${access}"><span class="aic">${ICON.wheel}</span><span><b>${t("qAccess")}</b><small>${t("accessDesc")}</small></span><span class="switch" aria-hidden="true"></span></button></div>` : "";
 
@@ -626,7 +661,8 @@ function renderRoute() {
   else {
     const c = current();
     let hero = "", body = "";
-    if (R.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
+    if (!origin()) body = `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
+    else if (R.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
     else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${buddy("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
     else if (R.fast[R.mode]?.error) body = `<div class="insight err">${buddy("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
@@ -651,12 +687,17 @@ function renderRoute() {
       ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
     const ready = c?.coords && !R.busy;
+    const atStart = !from || (me && km(me, from) < .3); // turn-by-turn only makes sense from where you are
+    if (ready && !atStart) body = `<div class="insight"><span class="dot"></span><div>${t("navOnlyHere")}</div></div>` + body;
     const label = R.steps ? t("hideSteps") : t("steps");
-    main = hero + (R.fast[R.mode]?.error ? "" : `<div class="actions"><button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button><button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`) + body + steps + (R.fast[R.mode]?.unreachable ? "" : prefs);
+    main = hero + (R.fast[R.mode]?.error || !origin() ? "" : `<div class="actions">${atStart ? `<button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button>` : ""}<button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`) + body + steps + (R.fast[R.mode]?.unreachable || !origin() ? "" : prefs);
   }
   // order follows the questions you answer: how you travel, whether you need step-free, then the result and the kind of route
   sheetBody.innerHTML = head + modes + accessSw + main + `<p class="foot">${ICON.shield}${t("realRoutes")}</p>`;
 
+  $("#fromBtn").onclick = startPickFrom;
+  $("#swapBtn").onclick = swapEnds;
+  const ps = $("#pickStartBtn"); if (ps) ps.onclick = startPickFrom;
   sheetBody.querySelectorAll(".mode").forEach(b => b.onclick = () => { if (R.mode !== b.dataset.m) { R.mode = b.dataset.m; R.steps = false; R.askMsg = null; routeNow(true); } });
   sheetBody.querySelectorAll(".itin").forEach(b => b.onclick = () => { R.itin = +b.dataset.i; drawRoutes(); rerenderSheet(); fitLine(R.transit.items[R.itin].coords); });
   sheetBody.querySelectorAll(".pref").forEach(b => b.onclick = () => { R.askText = ""; R.askMsg = null; R.prefs = b.dataset.p === "fastest" ? [] : [b.dataset.p]; routeNow(); });
@@ -691,9 +732,55 @@ function askRoute(txt) {
 }
 
 function startDirections() {
-  if (!me) { locState = "off"; renderWhere(); toast(t("noLocation")); geo.trigger(); return; }
   view = "route";
+  if (!origin()) { geo.trigger(); toast(t("noLocationPick")); startPickFrom(); return; }
   routeNow(true);
+}
+
+// ---------- Starting point ----------
+const pickbar = $("#pickbar");
+function startPickFrom() {
+  if (NAV.active) return;
+  picking = true;
+  pickbar.querySelector("span").textContent = t("pickFromHint");
+  pickbar.querySelector("button").textContent = t("cancel");
+  pickbar.hidden = false;
+  document.body.classList.add("picking");
+  qEl.value = ""; clearQ.hidden = true; qEl.placeholder = t("fromPlaceholder");
+  setSnap(0); rerenderSheet();
+  qEl.focus(); setTimeout(showRecents, 0); // after the tap's own click finishes (it would close the list)
+}
+function endPick() {
+  picking = false; pickbar.hidden = true; document.body.classList.remove("picking");
+  qEl.placeholder = t("searchPlaceholder");
+  if (dest) { qEl.value = dest.name; clearQ.hidden = false; }
+  hideSugs(); qEl.blur();
+}
+pickbar.querySelector("button").onclick = () => { endPick(); setSnap(1); rerenderSheet(); };
+function startEl() {
+  const el = document.createElement("div");
+  el.className = "start-pin"; el.setAttribute("aria-hidden", "true");
+  return el;
+}
+// p = a place, or null for "my location"
+function setFrom(p) {
+  endPick();
+  from = p;
+  fromMarker?.remove(); fromMarker = null;
+  if (p) fromMarker = new maplibregl.Marker({ element: startEl() }).setLngLat([p.lon, p.lat]).addTo(map);
+  if (p && p.name !== t("pinned")) remember(p);
+  resetRoute(); view = "route"; setSnap(1);
+  if (!origin()) { geo.trigger(); toast(t("noLocationPick")); return startPickFrom(); }
+  routeNow(true);
+}
+function swapEnds() {
+  const start = from || (me ? { lat: me.lat, lon: me.lon, name: t("myLocation"), sub: whereAddr?.title || "", isMe: true } : null);
+  if (!start || !dest) return;
+  const oldDest = dest;
+  // going back to where I am is the same as using my live location as destination
+  choose(start, false);
+  view = "route";
+  setFrom(oldDest.isMe ? null : oldDest);
 }
 
 // ---------- Walk / bike / car (Valhalla, real streets) ----------
@@ -785,13 +872,21 @@ async function valhallaOnce(locs, mode, extra) {
   return { time: j.trip.summary.time, length: j.trip.summary.length, coords, maneuvers, cum: cumulative(coords), ferry, offRoad };
 }
 
+// Remember the trip so that if the phone closes the app, it comes back where you were
+function saveTrip() {
+  if (view !== "route" || !dest) return store.set("trip", null);
+  const keep = p => p && { lat: p.lat, lon: p.lon, name: p.name, sub: p.sub || "", osm: p.osm || null };
+  store.set("trip", { at: Date.now(), dest: keep(dest), from: keep(from), mode: R.mode, prefs: R.prefs });
+}
 async function routeNow(fit = false) {
+  saveTrip();
   const seq = ++R.seq, mode = R.mode;
   R.mine = null; R.pois = []; R.note = ""; R.poiCount = {};
   setVibe(R.prefs[0] || "fastest");
   if (mode === "transit") { setVibe("fastest"); return transitNow(seq, fit); }
+  if (!origin()) { R.busy = false; rerenderSheet(); return; } // nothing to route from yet: the sheet asks where you start
   R.busy = true; rerenderSheet(); drawRoutes();
-  const O = { lat: me.lat, lon: me.lon }, D = { lat: dest.lat, lon: dest.lon };
+  const O = { lat: origin().lat, lon: origin().lon }, D = { lat: dest.lat, lon: dest.lon };
   try {
     if (!R.fast[mode]?.coords) R.fast[mode] = await valhalla([O, D], mode);
     if (seq !== R.seq) return;
@@ -814,7 +909,8 @@ async function routeNow(fit = false) {
 async function fillOtherModes(seq) {
   for (const m of ["walk", "bike", "car"]) {
     if (R.fast[m] || seq !== R.seq) continue;
-    try { R.fast[m] = await valhalla([me, dest].map(p => ({ lat: p.lat, lon: p.lon })), m); }
+    try { if (!origin()) return;
+    R.fast[m] = await valhalla([origin(), dest].map(p => ({ lat: p.lat, lon: p.lon })), m); }
     catch (e) { if (!e.unreachable && !navigator.onLine) continue; R.fast[m] = { error: true, unreachable: !!e.unreachable, reason: e.reason }; }
     if (seq === R.seq) rerenderSheet();
   }
@@ -854,7 +950,7 @@ async function loadTransit() {
   R.transit = { items };
 }
 async function transitous() {
-  const params = new URLSearchParams({ fromPlace: `${me.lat},${me.lon}`, toPlace: `${dest.lat},${dest.lon}`, numItineraries: "5", detailedTransfers: "false", pedestrianProfile: access ? "WHEELCHAIR" : "FOOT", language: lang });
+  const params = new URLSearchParams({ fromPlace: `${origin().lat},${origin().lon}`, toPlace: `${dest.lat},${dest.lon}`, numItineraries: "5", detailedTransfers: "false", pedestrianProfile: access ? "WHEELCHAIR" : "FOOT", language: lang });
   let j = null;
   for (const url of TRANSITOUS) { try { j = await getJSON(`${url}?${params}`, { timeout: 15000 }); break; } catch {} }
   if (!j) return [];
@@ -877,7 +973,7 @@ async function transitous() {
 const ROUTE_KINDS = "subway|light_rail|monorail|train|tram|bus|trolleybus";
 const KIND = { subway: { speed: 33, wait: 4 }, light_rail: { speed: 26, wait: 6 }, monorail: { speed: 30, wait: 5 }, train: { speed: 45, wait: 10 }, tram: { speed: 18, wait: 7 }, bus: { speed: 14, wait: 8 }, trolleybus: { speed: 14, wait: 8 } };
 async function osmTransit() {
-  const O = { lat: me.lat, lon: me.lon }, D = { lat: dest.lat, lon: dest.lon };
+  const O = { lat: origin().lat, lon: origin().lon }, D = { lat: dest.lat, lon: dest.lon };
   if (km(O, D) < .8) return [];
   const rad = access ? 500 : 700;
   const sel = p => `node(around:${rad},${p.lat},${p.lon})[~"^(public_transport|highway|railway)$"~"^(platform|stop_position|bus_stop|station|halt|tram_stop)$"]`;
@@ -923,6 +1019,7 @@ async function osmTransit() {
   return [...best.values()].sort((x, y) => (access ? y.accessScore - x.accessScore : 0) || x.duration - y.duration).slice(0, 4);
 }
 async function transitNow(seq, fit) {
+  if (!origin()) { R.busy = false; return rerenderSheet(); }
   if (!R.transit) { R.busy = true; rerenderSheet(); await loadTransit(); if (seq !== R.seq) return; }
   R.busy = false; R.itin = 0; rerenderSheet(); drawRoutes();
   const it = R.transit.items[0];
@@ -939,6 +1036,7 @@ function stopAccess(v) {
   return `<span>${t("stop_unknown")}</span>`;
 }
 function transitBody() {
+  if (!origin()) return `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
   if (R.busy) return `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
   const items = R.transit?.items || [];
   if (!items.length) return `<div class="insight err">${buddy("sad")}<div>${t("noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;

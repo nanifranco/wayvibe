@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Wayvibe</title>
+  <meta property="og:title" content="Wayvibe">
+  <meta property="og:description" content="Rutas reales a tu manera: la más rápida, la más turística, con sombra, con restaurantes o sin escaleras.">
+  <meta property="og:image" content="icon.svg">
   <meta name="description" content="Mapa con rutas reales a tu manera: la más rápida, la más turística, con sombra, con restaurantes o sin escaleras.">
   <meta name="theme-color" content="#f5f6f8">
   <link rel="manifest" href="manifest.webmanifest">
@@ -17,6 +20,9 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- the greeting covers the first paint, so the app never flashes half-built -->
+  <div class="splash" id="splash" aria-hidden="true"></div>
+  <noscript><div class="fatal"><p>Wayvibe necesita JavaScript. Actívalo en tu navegador para ver el mapa.</p></div></noscript>
   <div id="map" role="application" aria-label="Map"></div>
 
   <div class="ui" id="ui">
@@ -37,6 +43,7 @@
       </form>
       <div class="sugs card" id="sugs" role="listbox" hidden></div>
     </div>
+    <div class="pickbar card" id="pickbar" hidden role="status"><i class="ft-dot start" aria-hidden="true"></i><span></span><button class="link" type="button"></button></div>
     <div class="cats" id="cats" role="toolbar"></div>
     <div class="where card" id="where" hidden aria-live="polite"></div>
     <div class="hint card" id="hint" hidden>
@@ -60,7 +67,8 @@
   <div class="offline" id="offline" role="alert" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="splash.js"></script>
+  <script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
