@@ -342,3 +342,4 @@ body:has(.sheet:not([hidden])) .offline{bottom:auto;top:calc(76px + env(safe-are
 .confetti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation: v-fall linear forwards; }
 @keyframes v-fall { to { transform: translate(var(--dx), 105vh) rotate(var(--r)); opacity: .9; } }
 @media (prefers-reduced-motion: reduce) { .vibi *, .vibi .v-body { animation: none !important; } }
+.offline { width: min(460px, calc(100vw - 32px)); box-sizing: border-box; }
