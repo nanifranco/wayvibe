@@ -182,6 +182,9 @@ const ICON = {
   phone: S(`<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>`),
   globe: S(`<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/>`),
   info: S(`<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>`),
+  heart: S(`<path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z"/>`),
+  heartOn: S(`<path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z" fill="currentColor"/>`),
+  trash: S(`<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>`),
   shield: S(`<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/><path d="m9 12 2 2 4-4"/>`),
   speaker: S(`<path d="M4 9h4l5-4v14l-5-4H4Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>`),
   mute: S(`<path d="M4 9h4l5-4v14l-5-4H4Z"/><path d="m17 9 5 6M22 9l-5 6"/>`),
@@ -370,10 +373,12 @@ const CATS = {
 };
 const NEAR = { cat: null, items: [], busy: false, error: false };
 function renderCats() {
-  $("#cats").innerHTML = Object.entries(CATS).map(([k, c]) => `<button class="cat" type="button" data-c="${k}" aria-pressed="${NEAR.cat === k}" style="--c:${c.color}">${ICON[c.icon]}${t("cat_" + k)}</button>`).join("");
-  document.querySelectorAll(".cat").forEach(b => b.onclick = () => nearby(b.dataset.c));
+  const n = savedList().length;
+  $("#cats").innerHTML = `<button class="cat saved-cat" type="button" id="savedCat" aria-pressed="${view === "saved"}" style="--c:#e11d48">${ICON.heartOn}${t("saved")}${n ? `<span class="count">${n}</span>` : ""}</button>` + Object.entries(CATS).map(([k, c]) => `<button class="cat" type="button" data-c="${k}" aria-pressed="${NEAR.cat === k}" style="--c:${c.color}">${ICON[c.icon]}${t("cat_" + k)}</button>`).join("");
+  document.querySelectorAll(".cat[data-c]").forEach(b => b.onclick = () => nearby(b.dataset.c));
+  $("#savedCat").onclick = openSaved;
 }
-renderCats();
+queueMicrotask(renderCats); // after the whole module has run (it reads state declared further down)
 async function nearby(cat) {
   if (NAV.active) return;
   closeAll(false);
@@ -521,6 +526,7 @@ function pinEl() {
 function choose(p, fly = true) {
   if (!p || !isFinite(p.lat) || !isFinite(p.lon)) return; // a broken search result must never break the map
   if (picking) return setFrom(p.isMe ? null : p);
+  if (view === "saved") { savedMarkers.forEach(m => m.remove()); savedMarkers = []; }
   hideSugs(); qEl.blur(); $("#hint").hidden = true;
   dest = p; view = "place";
   qEl.value = p.name; clearQ.hidden = false;
@@ -545,6 +551,7 @@ async function loadDetails(p) {
 function closeAll(clearNear = true) {
   if (NAV.active) stopNav();
   dest = null; view = null; destMarker?.remove(); destMarker = null;
+  savedMarkers.forEach(m => m.remove()); savedMarkers = [];
   from = null; fromMarker?.remove(); fromMarker = null; if (picking) endPick();
   store.set("trip", null);
   if (clearNear) { NEAR.cat = null; NEAR.items = []; renderCats(); }
@@ -612,6 +619,7 @@ const headRow = inner => `<div class="hero-row" style="justify-content:space-bet
 function rerenderSheet() {
   if (NAV.active) return;
   if (view === "nearby") return renderNearby();
+  if (view === "saved") return renderSaved();
   if (!dest) { sheet.hidden = true; return; }
   sheet.hidden = false;
   if (view === "place") return renderPlace();
@@ -630,13 +638,65 @@ function renderNearby() {
   const r = $("#retryNear"); if (r) r.onclick = () => nearby(NEAR.cat);
   bindClose();
 }
+
+// ---------- Wishlist: places you'd like to go (kept on this phone) ----------
+function savedList() { const s = store.get("saved", []); return Array.isArray(s) ? s.filter(p => p && isFinite(p.lat) && isFinite(p.lon)) : []; }
+function isSaved(p) { return !!p && savedList().some(s => km(s, p) < .03); }
+let savedMarkers = [];
+function toggleSave(p) {
+  let list = savedList();
+  if (isSaved(p)) { list = list.filter(s => km(s, p) >= .03); toast(t("removedToast")); }
+  else {
+    list.unshift({ name: p.name, sub: p.sub || "", lat: p.lat, lon: p.lon, osm: p.osm || null, at: Date.now() });
+    toast(t("savedToast")); navigator.vibrate?.(20);
+  }
+  store.set("saved", list.slice(0, 300));
+  renderCats();
+}
+function drawSaved() {
+  savedMarkers.forEach(m => m.remove()); savedMarkers = [];
+  if (view !== "saved") return;
+  for (const p of savedList()) {
+    const el = document.createElement("button");
+    el.className = "saved-pin"; el.type = "button"; el.innerHTML = ICON.heartOn; el.setAttribute("aria-label", p.name);
+    el.onclick = e => { e.stopPropagation(); choose(p); };
+    savedMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(map));
+  }
+}
+function openSaved() {
+  if (NAV.active) return;
+  closeAll();
+  $("#hint").hidden = true;
+  view = "saved"; renderCats(); setSnap(1); rerenderSheet(); drawSaved();
+  const list = savedList();
+  if (list.length > 1) fitLine(list.map(p => [p.lon, p.lat]));
+  else if (list.length === 1) map.flyTo({ center: [list[0].lon, list[0].lat], zoom: 15 });
+}
+function renderSaved() {
+  sheet.hidden = false;
+  const list = savedList();
+  const body = list.length
+    ? `<div class="places" role="list">${list.map((p, i) => `<div class="saved-row" role="listitem"><button class="sug" type="button" data-i="${i}"><span class="ic" style="color:#e11d48">${ICON.heartOn}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc(p.sub)}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button><button class="btn icon rm" type="button" data-i="${i}" aria-label="${esc(t("removeSaved") + ": " + p.name)}" title="${esc(t("removeSaved"))}">${ICON.trash}</button></div>`).join("")}</div>`
+    : `<div class="insight">${buddy("happy")}<div>${t("savedEmpty")}</div></div>`;
+  sheetBody.innerHTML = headRow(`<h2 class="title">${t("savedTitle")}</h2>${list.length ? `<p class="sub2">${t(list.length === 1 ? "savedOne" : "savedCount", { n: list.length })}</p>` : ""}`) + body + `<p class="foot">${ICON.shield}${t("savedPrivate")}</p>`;
+  sheetBody.querySelectorAll(".saved-row .sug").forEach(b => b.onclick = () => choose(list[+b.dataset.i]));
+  sheetBody.querySelectorAll(".saved-row .rm").forEach(b => b.onclick = () => { toggleSave(list[+b.dataset.i]); renderSaved(); drawSaved(); });
+  bindClose();
+}
+
 function renderPlace() {
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(dest.name)}</h2>${dest.sub ? `<p class="sub2">${esc(dest.sub)}</p>` : ""}`) +
     `${me ? `<span class="kicker">${fmtDist(km(me, dest))} · ${t("from").toLowerCase()}</span>` : ""}
-    <div class="actions"><button class="btn go" id="dirBtn" type="button">${ICON.go}${t("directions")}</button></div>
+    <div class="actions"><button class="btn go" id="dirBtn" type="button">${ICON.go}${t("directions")}</button>${saveBtn()}</div>
     ${factsHtml(dest.tags)}`;
   $("#dirBtn").onclick = startDirections;
+  $("#saveBtn").onclick = () => { toggleSave(dest); rerenderSheet(); };
   bindClose();
+}
+// a heart that says what it does: "Guardar" before, "Guardado" (filled) after
+function saveBtn() {
+  const on = isSaved(dest);
+  return `<button class="btn save" id="saveBtn" type="button" aria-pressed="${on}">${on ? ICON.heartOn : ICON.heart}${t(on ? "savedOk" : "save")}</button>`;
 }
 function renderRoute() {
   const modeBtn = m => {
@@ -673,6 +733,8 @@ function renderRoute() {
         lines.push(extra > 0 ? t("extra", { n: extra }) : t("same"));
         const parts = R.prefs.filter(p => R.poiCount[p] > 0).map(p => t("poi_" + p, { n: R.poiCount[p] }));
         if (parts.length) lines.push(`<b>${esc(t("passes", { list: parts.join(", ") }))}</b>`);
+        const top = R.prefs.flatMap(p => R.mine.names?.[p] || []).slice(0, 4);
+        if (top.length) lines.push(`<span class="poi-names">${top.map(esc).join(" · ")}</span>`);
       }
       if (R.note) lines.push(esc(R.note));
       if (c.offRoad) lines.push(esc(t("farFromRoad")));
@@ -1192,9 +1254,11 @@ function renderNav() {
 
 // ---------- Personalized routes: real streets through real places ----------
 const QUERIES = {
-  scenic: b => `nwr["tourism"~"^(attraction|museum|viewpoint|artwork|gallery)$"](${b});nwr["historic"~"^(monument|memorial|castle|ruins|church|fort)$"](${b});`,
+  // Only real sights: named attractions/museums/viewpoints and major historic sites, plus anything notable enough to
+  // have a Wikidata entry. Plain murals, plaques and unnamed statues are left out (a city has thousands of them).
+  scenic: b => `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium)$"]["name"](${b});nwr["historic"~"^(monument|castle|ruins|archaeological_site|fort|city_gate|palace|building|church|cathedral)$"]["name"]["wikidata"](${b});nwr["historic"~"^(monument|castle|archaeological_site|palace)$"]["name"](${b});nwr["tourism"="artwork"]["name"]["wikidata"](${b});nwr["amenity"="place_of_worship"]["name"]["wikidata"]["historic"](${b});`,
   shade: b => `nwr["leisure"~"^(park|garden)$"](${b});nwr["landuse"~"^(forest|grass|recreation_ground)$"](${b});nwr["natural"~"^(wood|tree_row)$"](${b});`,
-  food: b => `nwr["amenity"~"^(restaurant|cafe|fast_food|ice_cream|food_court)$"](${b});`,
+  food: b => `nwr["amenity"~"^(restaurant|cafe|fast_food|ice_cream|food_court)$"]["name"](${b});`,
   quiet: b => `nwr["leisure"~"^(park|garden)$"](${b});way["highway"~"^(pedestrian|footway|living_street)$"]["name"](${b});`,
 };
 const NEAR_KM = { walk: .06, bike: .08, car: .15 }; // how close counts as "passing by"
@@ -1205,8 +1269,21 @@ async function poisAlong(prefs, bbox) {
   return els.map(e => {
     const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon, tg = e.tags || {};
     const kind = prefs.find(p => matchesPref(p, tg)) || prefs[0];
-    return { lat, lon, name: tg[`name:${lang}`] || tg.name || "", kind };
+    // notable places weigh more when picking where the route should pass
+    const weight = tg.wikidata || tg.wikipedia ? 3 : /^(museum|attraction|viewpoint)$/.test(tg.tourism || "") ? 2 : 1;
+    return { lat, lon, name: tg[`name:${lang}`] || tg.name || "", kind, weight };
   }).filter(p => p.lat != null);
+}
+// The same place often comes several times (as a building and as a point, or split in pieces): count it once
+function dedupe(list) {
+  const out = [];
+  for (const p of [...list].sort((a, b) => b.weight - a.weight)) {
+    const n = norm(p.name);
+    if (n && out.some(q => q.kind === p.kind && norm(q.name) === n && km(p, q) < .4)) continue;
+    if (!n && out.some(q => q.kind === p.kind && km(p, q) < .05)) continue;
+    out.push(p);
+  }
+  return out;
 }
 function matchesPref(p, tg) {
   if (p === "scenic") return !!(tg.tourism || tg.historic);
@@ -1233,7 +1310,7 @@ async function personalized(O, D, mode, prefs, fast) {
   const lats = fast.coords.map(c => c[1]), lons = fast.coords.map(c => c[0]);
   const dLat = padKm / 111, dLon = padKm / (111 * Math.cos(O.lat * Math.PI / 180));
   const bbox = [Math.min(...lats) - dLat, Math.min(...lons) - dLon, Math.max(...lats) + dLat, Math.max(...lons) + dLon];
-  const pois = await poisAlong(prefs, bbox);
+  const pois = dedupe(await poisAlong(prefs, bbox));
   if (pois.length < 2) return null;
 
   // pick up to 2 waypoints sitting in clusters of matching places, without a big detour
@@ -1241,7 +1318,7 @@ async function personalized(O, D, mode, prefs, fast) {
   const maxDetour = Math.max(.25, dOD * (mode === "car" ? .3 : .45));
   const scored = pois.map(p => {
     const detour = km(O, p) + km(p, D) - dOD;
-    const density = pois.reduce((n, q) => n + (km(p, q) <= cluster ? 1 : 0), 0);
+    const density = pois.reduce((n, q) => n + (km(p, q) <= cluster ? q.weight : 0), 0);
     return { p, detour, score: density - detour / (maxDetour + .01) * 2 };
   }).filter(x => x.detour <= maxDetour).sort((a, b) => b.score - a.score);
   if (!scored.length) return null;
@@ -1261,7 +1338,10 @@ async function personalized(O, D, mode, prefs, fast) {
 
   const line = densify(route.coords, .03);
   const passed = pois.filter(p => nearLine(p, line, NEAR_KM[mode]));
-  const count = {};
-  for (const p of passed) count[p.kind] = (count[p.kind] || 0) + 1;
-  return { route, pois: passed, count };
+  // what we tell you is only places with a name you could recognise; unnamed trees and lawns still shape the route
+  const count = {}, names = {};
+  for (const p of passed) if (p.name) { count[p.kind] = (count[p.kind] || 0) + 1; (names[p.kind] ||= []).push(p); }
+  for (const k in names) names[k] = names[k].sort((a, b) => b.weight - a.weight).slice(0, 3).map(p => p.name);
+  route.names = names;
+  return { route, pois: passed.filter(p => p.name), count }; // the map shows exactly the places we count
 }

@@ -13,6 +13,8 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 - Lugares cercanos reales (restaurantes, cafés, metro, farmacias, parques, cajeros) con horario, teléfono y accesibilidad cuando OpenStreetMap los tiene.
 - "¿Qué tipo de camino prefieres?": Turística, Con sombra, Con restaurantes o Tranquila. La caja de texto solo entiende estos filtros y la opción sin escaleras; si escribes otra cosa, te dice qué puedes pedir.
 - Puedes elegir el punto de partida (buscándolo o manteniendo presionado el mapa) e invertir salida y destino. Si no hay GPS, te pide desde dónde sales en vez de fallar.
+- Lista "Lugares que quiero visitar": toca ♡ Guardar en cualquier lugar y lo encuentras en el botón Guardados (se guarda solo en tu teléfono).
+- La ruta turística solo cuenta sitios reales con nombre (museos, miradores, monumentos y lugares con ficha en Wikidata), cada uno una sola vez, y te dice cuáles son.
 - Si el celular cierra la app, al abrirla retoma tu última ruta.
 - Vibi, la mascota de Wayvibe (un pin parado sobre un mapa): te saluda con una animación al abrir la app, piensa mientras busca la ruta, se pone triste cuando no se puede llegar, duerme sin conexión y celebra con confeti cuando llegas.
 - Aguanta fallas: si un servidor no responde, reintenta y usa uno de respaldo (rutas con OSRM, búsqueda con Nominatim, lugares con otros espejos de Overpass, mapa con OpenStreetMap). Sin señal te avisa y reintenta solo cuando vuelve.
