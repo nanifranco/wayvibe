@@ -6,7 +6,8 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 
 - Muestra un mapa real del mundo y dónde estás (calle, barrio y ciudad).
 - Busca cualquier sitio, o mantén pulsado el mapa para elegir un punto.
-- Calcula el tiempo a pie, en bici y en coche. Metro y bus se abren en Google Maps con el origen y el destino ya puestos.
+- Calcula el tiempo a pie, en bici, en coche y en metro o camión (con líneas, horarios y transbordos de Transitous), todo dentro de la app.
+- Navegación paso a paso: el mapa te sigue, te dice la próxima vuelta y recalcula si te sales de la ruta.
 - "¿Cómo quieres ir?": elige Turística, Con sombra, Con restaurantes o Tranquila, o escríbelo con tus palabras ("por donde haya cafés y algo de sombra"). La ruta pasa por zonas con más lugares de ese tipo y te dice cuántos minutos añade.
 - Idiomas: español, inglés, portugués, francés y coreano. Las etiquetas del mapa cambian también.
 
@@ -18,6 +19,7 @@ Mapa web con tu ubicación real y rutas personalizadas: la más rápida, la más
 | Búsqueda | [Photon](https://photon.komoot.io) |
 | Dirección actual | [Nominatim](https://nominatim.org) |
 | Rutas | [Valhalla](https://valhalla1.openstreetmap.de) (FOSSGIS) |
+| Metro y camión | [Transitous](https://transitous.org) |
 | Lugares a lo largo de la ruta | [Overpass API](https://overpass-api.de) |
 
 Son servidores públicos con límites de uso justo. Si la app crece, conviene usar servidores propios o un proveedor de pago.
