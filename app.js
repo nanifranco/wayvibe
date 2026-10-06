@@ -181,7 +181,8 @@ const ICON = {
   locate: S(`<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>`),
   swap: S(`<path d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l-3.5-3.5M17 20l3.5-3.5"/>`),
   fastest: S(`<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z"/>`),
-  scenic: S(`<path d="M3 8h3l2-3h8l2 3h3v11H3Z"/><circle cx="12" cy="13" r="3.5"/>`),
+  tourist: S(`<path d="M3 8h3l2-3h8l2 3h3v11H3Z"/><circle cx="12" cy="13" r="3.5"/>`),
+  scenic: S(`<path d="M2 19l6.5-9 4 5.5 3-4L22 19Z"/><circle cx="17" cy="6" r="2"/>`),
   shade: S(`<path d="M12 22v-6M7 16h10l-2.5-4H16l-4-6-4 6h1.5Z"/>`),
   food: S(`<path d="M7 2v8a2 2 0 0 0 2 2v10M11 2v8a2 2 0 0 1-2 2M17 22V2c-2 1.5-3 4-3 7s1 4 3 4"/>`),
   quiet: S(`<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>`),
@@ -218,7 +219,8 @@ function manIcon(type) {
 // ---------- Route styles ("vibes") ----------
 const VIBES = {
   fastest: ["#2563eb", "#4f46e5"],
-  scenic: ["#9333ea", "#db2777"],
+  scenic: ["#0891b2", "#7c3aed"],
+  tourist: ["#f97316", "#db2777"],
   shade: ["#059669", "#65a30d"],
   food: ["#ea580c", "#e11d48"],
   quiet: ["#0284c7", "#4f46e5"],
@@ -606,7 +608,9 @@ function panelPadding() {
 }
 
 const COSTING = { walk: "pedestrian", bike: "bicycle", car: "auto" };
-const PREFS = ["fastest", "scenic", "shade", "food", "quiet"];
+const PREFS = ["fastest", "tourist", "scenic", "shade", "food", "quiet"];
+// how touristy: 1 = only the famous essentials, 2 = + museums, viewpoints and monuments, 3 = every sight found
+let tourLevel = [1, 2, 3].includes(store.get("tourLevel")) ? store.get("tourLevel") : 1;
 const current = () => R.mine || R.fast[R.mode];
 const usesAccess = () => access && (R.mode === "walk" || R.mode === "transit");
 
@@ -757,6 +761,7 @@ function renderRoute() {
     const active = R.prefs.length ? R.prefs : ["fastest"];
     const prefs = `<div><p class="q">${t("howToGo")}</p>
       <div class="prefs" role="group" aria-label="${esc(t("howToGo"))}">${PREFS.map(p => `<button class="pref" type="button" data-p="${p}" aria-pressed="${active.includes(p)}" style="--c1:${VIBES[p][0]};--c2:${VIBES[p][1]}"><i>${ICON[p]}</i>${t(p)}${ICON.check}</button>`).join("")}</div>
+      ${active.includes("tourist") ? `<div class="levels"><p class="q sm">${t("qTourLevel")}</p><div class="lvl-row" role="radiogroup" aria-label="${esc(t("qTourLevel"))}">${[1, 2, 3].map(l => `<button class="lvl" type="button" role="radio" data-l="${l}" aria-checked="${tourLevel === l}"><span class="lvl-n">${"●".repeat(l)}${"○".repeat(3 - l)}</span><b>${t("lvl" + l)}</b><small>${t("lvl" + l + "d")}</small></button>`).join("")}</div></div>` : ""}
       <form class="ask" id="askForm"><input id="ask" maxlength="60" placeholder="${esc(t("askPlaceholder"))}" aria-label="${esc(t("howToGo"))}" value="${esc(R.askText)}"><button type="submit">OK</button></form>
       ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
@@ -774,6 +779,7 @@ function renderRoute() {
   const ps = $("#pickStartBtn"); if (ps) ps.onclick = startPickFrom;
   sheetBody.querySelectorAll(".mode").forEach(b => b.onclick = () => { if (R.mode !== b.dataset.m) { R.mode = b.dataset.m; R.steps = false; R.askMsg = null; routeNow(true); } });
   sheetBody.querySelectorAll(".itin").forEach(b => b.onclick = () => { R.itin = +b.dataset.i; drawRoutes(); rerenderSheet(); fitLine(R.transit.items[R.itin].coords); });
+  sheetBody.querySelectorAll(".lvl").forEach(b => b.onclick = () => { const l = +b.dataset.l; if (l === tourLevel) return; tourLevel = l; store.set("tourLevel", l); routeNow(); });
   sheetBody.querySelectorAll(".pref").forEach(b => b.onclick = () => { R.askText = ""; R.askMsg = null; R.prefs = b.dataset.p === "fastest" ? [] : [b.dataset.p]; routeNow(); });
   const sw = $("#accessSw");
   if (sw) sw.onclick = () => { access = !access; store.set("access", access); R.fast = {}; R.transit = null; routeNow(true); };
@@ -797,6 +803,8 @@ function askRoute(txt) {
     R.askMsg = { cls: "warn", text: t("askNone", { list: [...PREFS.map(p => t(p)), t("accessLabel")].join(", ") }) };
     return rerenderSheet();
   }
+  const lv = n.match(/(?:nivel|level|niveau|уровень|레벨|レベル)\s*([123])|([123])\s*(?:级|단계)/);
+  if (lv) { tourLevel = +(lv[1] || lv[2]); store.set("tourLevel", tourLevel); if (!found.includes("tourist")) found.push("tourist"); }
   const prefs = found.filter(k => k !== "fastest");
   const names = [...(prefs.length ? prefs : found.includes("fastest") ? ["fastest"] : []).map(p => t(p)), ...(wantsAccess ? [t("accessLabel")] : [])];
   R.askMsg = { cls: "ok", text: t("askGot", { list: names.join(", ") }) };
@@ -1266,9 +1274,14 @@ function renderNav() {
 
 // ---------- Personalized routes: real streets through real places ----------
 const QUERIES = {
-  // Only real sights: named attractions/museums/viewpoints and major historic sites, plus anything notable enough to
-  // have a Wikidata entry. Plain murals, plaques and unnamed statues are left out (a city has thousands of them).
-  scenic: b => `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium)$"]["name"](${b});nwr["historic"~"^(monument|castle|ruins|archaeological_site|fort|city_gate|palace|building|church|cathedral)$"]["name"]["wikidata"](${b});nwr["historic"~"^(monument|castle|archaeological_site|palace)$"]["name"](${b});nwr["tourism"="artwork"]["name"]["wikidata"](${b});nwr["amenity"="place_of_worship"]["name"]["wikidata"]["historic"](${b});`,
+  // Touristy, by level. Level 1 keeps only places famous enough to have a Wikipedia article.
+  tourist: b => ({
+    1: `nwr["tourism"~"^(attraction|museum|viewpoint|zoo|theme_park|aquarium)$"]["name"]["wikipedia"](${b});nwr["historic"~"^(monument|castle|palace|archaeological_site|cathedral|church|building|fort|city_gate)$"]["name"]["wikipedia"](${b});`,
+    2: `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium)$"]["name"](${b});nwr["historic"~"^(monument|castle|ruins|archaeological_site|fort|city_gate|palace|building|church|cathedral)$"]["name"]["wikidata"](${b});nwr["historic"~"^(monument|castle|archaeological_site|palace)$"]["name"](${b});nwr["tourism"="artwork"]["name"]["wikidata"](${b});`,
+    3: `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium|artwork)$"]["name"](${b});nwr["historic"]["name"](${b});nwr["amenity"~"^(place_of_worship|theatre|arts_centre)$"]["name"]["wikidata"](${b});`,
+  })[tourLevel],
+  // Nice views: viewpoints, gardens, fountains, squares, water and pedestrian streets with a name
+  scenic: b => `nwr["tourism"="viewpoint"](${b});nwr["leisure"="garden"]["name"](${b});nwr["amenity"="fountain"]["name"](${b});nwr["place"="square"]["name"](${b});nwr["natural"="water"]["name"](${b});way["highway"="pedestrian"]["name"](${b});`,
   shade: b => `nwr["leisure"~"^(park|garden)$"](${b});nwr["landuse"~"^(forest|grass|recreation_ground)$"](${b});nwr["natural"~"^(wood|tree_row)$"](${b});`,
   food: b => `nwr["amenity"~"^(restaurant|cafe|fast_food|ice_cream|food_court)$"]["name"](${b});`,
   quiet: b => `nwr["leisure"~"^(park|garden)$"](${b});way["highway"~"^(pedestrian|footway|living_street)$"]["name"](${b});`,
@@ -1298,7 +1311,8 @@ function dedupe(list) {
   return out;
 }
 function matchesPref(p, tg) {
-  if (p === "scenic") return !!(tg.tourism || tg.historic);
+  if (p === "tourist") return !!(tg.tourism && tg.tourism !== "viewpoint" || tg.historic || tg.amenity === "place_of_worship" || tg.amenity === "theatre" || tg.amenity === "arts_centre");
+  if (p === "scenic") return !!(tg.tourism === "viewpoint" || tg.leisure === "garden" || tg.amenity === "fountain" || tg.place || tg.natural || tg.highway);
   if (p === "food") return !!tg.amenity;
   if (p === "shade") return !!(tg.leisure || tg.landuse || tg.natural);
   if (p === "quiet") return !!(tg.leisure || tg.highway);
