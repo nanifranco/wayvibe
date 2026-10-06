@@ -1,5 +1,6 @@
 import { LANGS, T, PREF_WORDS, ACCESS_WORDS, ROUTE_LANG } from "./i18n.js";
 import { buddy, celebrate } from "./mascot.js";
+import { VERSION } from "./splash.js";
 
 // ---------- Services (all free, no key) ----------
 // Map: OpenFreeMap · Search: Photon · Address: Nominatim · Walk/bike/car: Valhalla (FOSSGIS)
@@ -81,6 +82,9 @@ function oops(err) {
 }
 addEventListener("error", e => oops(e.error || e));
 addEventListener("unhandledrejection", e => oops(e.reason));
+
+// Tapping the logo tells you which version you have (useful to check an update arrived)
+document.querySelector(".brand")?.addEventListener("click", () => toast(`Wayvibe v${VERSION}`));
 
 // ---------- Connection ----------
 function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${buddy("sleep")}<span>${t("offline")}</span>`; }
@@ -571,7 +575,7 @@ function closeAll(clearNear = true) {
   if (clearNear) { NEAR.cat = null; NEAR.items = []; renderCats(); }
   resetRoute(); drawNearby(); sheet.hidden = true; setVibe("fastest");
 }
-function resetRoute() { Object.assign(R, { fast: {}, mine: null, pois: [], poiCount: {}, note: "", busy: false, transit: null, itin: 0, steps: false, askMsg: null }); R.seq++; drawRoutes(); }
+function resetRoute() { Object.assign(R, { levelCounts: null, fast: {}, mine: null, pois: [], poiCount: {}, note: "", busy: false, transit: null, itin: 0, steps: false, askMsg: null }); R.seq++; drawRoutes(); }
 
 // ---------- Bottom sheet: drag the handle, or tap it, to show more or less ----------
 const SNAPS = [.3, .52, .88];
@@ -732,7 +736,7 @@ function renderRoute() {
   const modes = `<div><p class="q">${t("qMode")}</p><div class="modes" role="group" aria-label="${esc(t("qMode"))}">${["walk", "bike", "car", "transit"].map(modeBtn).join("")}</div></div>`;
   const accessSw = (R.mode === "walk" || R.mode === "transit") ? `<div><button class="access" id="accessSw" type="button" role="switch" aria-checked="${access}"><span class="aic">${ICON.wheel}</span><span><b>${t("qAccess")}</b><small>${t("accessDesc")}</small></span><span class="switch" aria-hidden="true"></span></button></div>` : "";
 
-  let main = "";
+  let main = "", goBar = "";
   if (R.mode === "transit") main = transitBody();
   else {
     const c = current();
@@ -761,7 +765,7 @@ function renderRoute() {
     const active = R.prefs.length ? R.prefs : ["fastest"];
     const prefs = `<div><p class="q">${t("howToGo")}</p>
       <div class="prefs" role="group" aria-label="${esc(t("howToGo"))}">${PREFS.map(p => `<button class="pref" type="button" data-p="${p}" aria-pressed="${active.includes(p)}" style="--c1:${VIBES[p][0]};--c2:${VIBES[p][1]}"><i>${ICON[p]}</i>${t(p)}${ICON.check}</button>`).join("")}</div>
-      ${active.includes("tourist") ? `<div class="levels"><p class="q sm">${t("qTourLevel")}</p><div class="lvl-row" role="radiogroup" aria-label="${esc(t("qTourLevel"))}">${[1, 2, 3].map(l => `<button class="lvl" type="button" role="radio" data-l="${l}" aria-checked="${tourLevel === l}"><span class="lvl-n">${"●".repeat(l)}${"○".repeat(3 - l)}</span><b>${t("lvl" + l)}</b><small>${t("lvl" + l + "d")}</small></button>`).join("")}</div></div>` : ""}
+      ${active.includes("tourist") ? `<div class="levels"><p class="q sm">${t("qTourLevel")}</p><div class="lvl-row" role="radiogroup" aria-label="${esc(t("qTourLevel"))}">${[1, 2, 3].map(l => `<button class="lvl" type="button" role="radio" data-l="${l}" aria-checked="${tourLevel === l}"><span class="lvl-n">${"●".repeat(l)}${"○".repeat(3 - l)}</span><b>${t("lvl" + l)}</b><small>${t("lvl" + l + "d")}</small>${R.levelCounts ? `<span class="lvl-c">${t("lvlCount", { n: R.levelCounts[l] })}</span>` : ""}</button>`).join("")}</div></div>` : ""}
       <form class="ask" id="askForm"><input id="ask" maxlength="60" placeholder="${esc(t("askPlaceholder"))}" aria-label="${esc(t("howToGo"))}" value="${esc(R.askText)}"><button type="submit">OK</button></form>
       ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
@@ -769,10 +773,12 @@ function renderRoute() {
     const atStart = !from || (me && km(me, from) < .3); // turn-by-turn only makes sense from where you are
     if (ready && !atStart) body = `<div class="insight"><span class="dot"></span><div>${t("navOnlyHere")}</div></div>` + body;
     const label = R.steps ? t("hideSteps") : t("steps");
-    main = hero + (R.fast[R.mode]?.error || !origin() ? "" : `<div class="actions">${atStart ? `<button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button>` : ""}<button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`) + body + steps + (R.fast[R.mode]?.unreachable || !origin() ? "" : prefs);
+    // the Go button lives in a bar pinned to the bottom of the sheet, so it is always one tap away after choosing filters
+    goBar = R.fast[R.mode]?.error || !origin() ? "" : `<div class="actions go-bar">${atStart ? `<button class="btn go" id="startBtn" type="button" ${ready ? "" : "disabled"}>${ICON.go}${t("start")}</button>` : ""}<button class="btn icon" id="stepsBtn" type="button" aria-pressed="${R.steps}" aria-label="${label}" title="${label}" ${ready ? "" : "disabled"}>${ICON.list}</button></div>`;
+    main = hero + body + steps + (R.fast[R.mode]?.unreachable || !origin() ? "" : prefs);
   }
   // order follows the questions you answer: how you travel, whether you need step-free, then the result and the kind of route
-  sheetBody.innerHTML = head + modes + accessSw + main + `<p class="foot">${ICON.shield}${t("realRoutes")}</p>`;
+  sheetBody.innerHTML = head + modes + accessSw + main + `<p class="foot">${ICON.shield}${t("realRoutes")}</p>` + goBar;
 
   $("#fromBtn").onclick = startPickFrom;
   $("#swapBtn").onclick = swapEnds;
@@ -975,8 +981,9 @@ async function routeNow(fit = false) {
     if (R.prefs.length) {
       const res = await personalized(O, D, mode, R.prefs, R.fast[mode]);
       if (seq !== R.seq) return;
-      if (res) { R.mine = res.route; R.pois = res.pois; R.poiCount = res.count; }
-      else R.note = t("nothingFound");
+      R.levelCounts = res?.levelCounts || null;
+      if (res?.route) { R.mine = res.route; R.pois = res.pois; R.poiCount = res.count; }
+      else R.note = R.prefs.includes("tourist") && R.levelCounts && tourLevel < 3 ? t("noTourLevel", { n: tourLevel }) : t("nothingFound");
     }
   } catch (e) {
     if (seq !== R.seq) return;
@@ -1274,12 +1281,8 @@ function renderNav() {
 
 // ---------- Personalized routes: real streets through real places ----------
 const QUERIES = {
-  // Touristy, by level. Level 1 keeps only places famous enough to have a Wikipedia article.
-  tourist: b => ({
-    1: `nwr["tourism"~"^(attraction|museum|viewpoint|zoo|theme_park|aquarium)$"]["name"]["wikipedia"](${b});nwr["historic"~"^(monument|castle|palace|archaeological_site|cathedral|church|building|fort|city_gate)$"]["name"]["wikipedia"](${b});`,
-    2: `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium)$"]["name"](${b});nwr["historic"~"^(monument|castle|ruins|archaeological_site|fort|city_gate|palace|building|church|cathedral)$"]["name"]["wikidata"](${b});nwr["historic"~"^(monument|castle|archaeological_site|palace)$"]["name"](${b});nwr["tourism"="artwork"]["name"]["wikidata"](${b});`,
-    3: `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium|artwork)$"]["name"](${b});nwr["historic"]["name"](${b});nwr["amenity"~"^(place_of_worship|theatre|arts_centre)$"]["name"]["wikidata"](${b});`,
-  })[tourLevel],
+  // Touristy: one broad search; each place gets its level here in the app (tourLevelOf), so switching levels is instant
+  tourist: b => `nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park|aquarium|artwork)$"]["name"](${b});nwr["historic"]["name"](${b});nwr["amenity"~"^(place_of_worship|theatre|arts_centre)$"]["name"]["wikidata"](${b});`,
   // Nice views: viewpoints, gardens, fountains, squares, water and pedestrian streets with a name
   scenic: b => `nwr["tourism"="viewpoint"](${b});nwr["leisure"="garden"]["name"](${b});nwr["amenity"="fountain"]["name"](${b});nwr["place"="square"]["name"](${b});nwr["natural"="water"]["name"](${b});way["highway"="pedestrian"]["name"](${b});`,
   shade: b => `nwr["leisure"~"^(park|garden)$"](${b});nwr["landuse"~"^(forest|grass|recreation_ground)$"](${b});nwr["natural"~"^(wood|tree_row)$"](${b});`,
@@ -1287,16 +1290,35 @@ const QUERIES = {
   quiet: b => `nwr["leisure"~"^(park|garden)$"](${b});way["highway"~"^(pedestrian|footway|living_street)$"]["name"](${b});`,
 };
 const NEAR_KM = { walk: .06, bike: .08, car: .15 }; // how close counts as "passing by"
+// 1 = famous (has a Wikipedia article, or is a major museum/castle/palace/ruin known to Wikidata)
+// 2 = + any named museum, attraction, viewpoint, gallery, monument, or historic place known to Wikidata
+// 3 = everything else the search found (named statues, plaques, small historic buildings…)
+const MAJOR_T = /^(attraction|museum|viewpoint|zoo|theme_park|aquarium)$/, MAJOR_H = /^(monument|castle|palace|archaeological_site|cathedral|fort|city_gate)$/;
+function tourLevelOf(tg) {
+  const tour = tg.tourism || "", hist = tg.historic || "";
+  if (tg.wikipedia && (MAJOR_T.test(tour) || MAJOR_H.test(hist) || hist === "church" || hist === "building" || tg.amenity)) return 1;
+  if (tg.wikidata && (/^(museum|attraction|zoo|aquarium)$/.test(tour) || /^(castle|palace|archaeological_site|cathedral)$/.test(hist))) return 1;
+  if (MAJOR_T.test(tour) || tour === "gallery" || /^(monument|castle|archaeological_site|palace)$/.test(hist) || ((hist || tour === "artwork") && tg.wikidata)) return 2;
+  return 3;
+}
+// Places along a corridor rarely change: keep them so changing level or filter doesn't hit the server again
+const poiCache = new Map();
 
 async function poisAlong(prefs, bbox) {
-  const b = bbox.map(v => v.toFixed(5)).join(",");
-  const els = await overpassQuery(`[out:json][timeout:20];(${prefs.map(p => QUERIES[p](b)).join("")});out center 500;`);
+  const b = bbox.map(v => v.toFixed(4)).join(",");
+  const key = [...prefs].sort().join("+") + "|" + b;
+  let els = poiCache.get(key);
+  if (!els) {
+    els = await overpassQuery(`[out:json][timeout:25];(${prefs.map(p => QUERIES[p](b)).join("")});out center 800;`);
+    if (poiCache.size > 30) poiCache.delete(poiCache.keys().next().value);
+    poiCache.set(key, els);
+  }
   return els.map(e => {
     const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon, tg = e.tags || {};
     const kind = prefs.find(p => matchesPref(p, tg)) || prefs[0];
     // notable places weigh more when picking where the route should pass
     const weight = tg.wikidata || tg.wikipedia ? 3 : /^(museum|attraction|viewpoint)$/.test(tg.tourism || "") ? 2 : 1;
-    return { lat, lon, name: tg[`name:${lang}`] || tg.name || "", kind, weight };
+    return { lat, lon, name: tg[`name:${lang}`] || tg.name || "", kind, weight: kind === "tourist" ? 4 - tourLevelOf(tg) : weight, lvl: kind === "tourist" ? tourLevelOf(tg) : 0 };
   }).filter(p => p.lat != null);
 }
 // The same place often comes several times (as a building and as a point, or split in pieces): count it once
@@ -1336,18 +1358,26 @@ async function personalized(O, D, mode, prefs, fast) {
   const lats = fast.coords.map(c => c[1]), lons = fast.coords.map(c => c[0]);
   const dLat = padKm / 111, dLon = padKm / (111 * Math.cos(O.lat * Math.PI / 180));
   const bbox = [Math.min(...lats) - dLat, Math.min(...lons) - dLon, Math.max(...lats) + dLat, Math.max(...lons) + dLon];
-  const pois = dedupe(await poisAlong(prefs, bbox));
-  if (pois.length < 2) return null;
+  const all = dedupe(await poisAlong(prefs, bbox));
+  // a more touristy level may take you a bit further out of your way
+  const lvlStretch = prefs.includes("tourist") ? [0, .8, 1, 1.35][tourLevel] : 1;
+  const maxDetour = Math.max(.25, dOD * (mode === "car" ? .3 : .45) * lvlStretch);
+  const reach = p => km(O, p) + km(p, D) - dOD <= Math.max(.25, dOD * (mode === "car" ? .3 : .45) * 1.35);
+  // how many sights each level has within reach, shown on the level cards so the choice is informed
+  const levelCounts = { 1: 0, 2: 0, 3: 0 };
+  for (const p of all) if (p.kind === "tourist" && p.name && reach(p)) for (let l = p.lvl; l <= 3; l++) levelCounts[l]++;
+  const pois = all.filter(p => p.kind !== "tourist" || p.lvl <= tourLevel);
+  if (!pois.length) return { route: null, levelCounts };
 
   // pick up to 2 waypoints sitting in clusters of matching places, without a big detour
   const cluster = { walk: .15, bike: .3, car: .6 }[mode];
-  const maxDetour = Math.max(.25, dOD * (mode === "car" ? .3 : .45));
   const scored = pois.map(p => {
     const detour = km(O, p) + km(p, D) - dOD;
-    const density = pois.reduce((n, q) => n + (km(p, q) <= cluster ? q.weight : 0), 0);
+    // level 1 goes for the famous spots; higher levels go wherever the most sights are
+    const density = pois.reduce((n, q) => n + (km(p, q) <= cluster ? (q.kind === "tourist" && tourLevel > 1 ? 1 : q.weight) : 0), 0);
     return { p, detour, score: density - detour / (maxDetour + .01) * 2 };
   }).filter(x => x.detour <= maxDetour).sort((a, b) => b.score - a.score);
-  if (!scored.length) return null;
+  if (!scored.length) return { route: null, levelCounts };
   const wps = [scored[0].p];
   for (const c of scored.slice(1, 60)) {
     if (wps.length >= 2) break;
@@ -1369,5 +1399,5 @@ async function personalized(O, D, mode, prefs, fast) {
   for (const p of passed) if (p.name) { count[p.kind] = (count[p.kind] || 0) + 1; (names[p.kind] ||= []).push(p); }
   for (const k in names) names[k] = names[k].sort((a, b) => b.weight - a.weight).slice(0, 3).map(p => p.name);
   route.names = names;
-  return { route, pois: passed.filter(p => p.name), count }; // the map shows exactly the places we count
+  return { route, pois: passed.filter(p => p.name), count, levelCounts }; // the map shows exactly the places we count
 }
