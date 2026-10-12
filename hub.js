@@ -4,7 +4,7 @@
 //   wv-tab {tab}           tells the map it is now visible
 //   wv-show-place {place}  open a place on the map
 //   wv-setlang {lang}      language picked here; wv-lang {lang} comes back when picked on the map
-import { LANGS } from "./i18n.js";
+import { LANGS, T } from "./i18n.js";
 import { buddy, celebrate } from "./mascot.js";
 import { VERSION } from "./splash.js";
 
@@ -42,6 +42,23 @@ addEventListener("wv-lang", e => setLang(e.detail, true));
 // ---------- Icons ----------
 const S = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const I = {
+  life: S(`<path d="M12 20s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z"/><path d="M9 11.5h2l1-2 1.5 4 1-2H16"/>`),
+  doc: S(`<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>`),
+  passport: S(`<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10.5" r="3"/><path d="M9 10.5h6M12 7.5c1 .8 1 5.2 0 6M9.5 17h5"/>`),
+  folder: S(`<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="m9 14 2 2 4-4"/>`),
+  shield: S(`<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z"/><path d="M12 9v6M9 12h6"/>`),
+  wallet: S(`<path d="M4 7a2 2 0 0 1 2-2h11v4"/><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M16 13.5h2"/>`),
+  suitcase: S(`<rect x="4" y="7" width="16" height="12" rx="2.5"/><path d="M9 7V4.5h6V7M8 7v12M16 7v12M7 21h.01M17 21h.01"/>`),
+  cap: S(`<path d="M2 9.5 12 5l10 4.5-10 4.5Z"/><path d="M6 11.5V16c2 2 10 2 12 0v-4.5M21 10v5"/>`),
+  idcard: S(`<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2.2"/><path d="M5.5 16c.6-1.6 1.7-2.3 3-2.3s2.4.7 3 2.3M14 10h4.5M14 13.5h3"/>`),
+  briefcase: S(`<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5h6v2M3 12.5h18M11 12.5v2h2v-2"/>`),
+  calendar: S(`<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/>`),
+  chat: S(`<path d="M4 5h16v11H9l-5 4Z"/><path d="M9 8.5v4M8 10.5h2.5M13.5 8.5c0 2 .5 3 2.5 4"/>`),
+  arrow: S(`<path d="M5 12h14M13 6l6 6-6 6"/>`),
+  x: S(`<path d="M6 6l12 12M18 6 6 18"/>`),
+  back: S(`<path d="M19 12H5M11 6l-6 6 6 6"/>`),
+  bow: S(`<circle cx="12" cy="5" r="2.2"/><path d="M12 8c-2.5 0-4 1.6-4.3 4l4.3 2 4.3-2C16 9.6 14.5 8 12 8ZM9.5 14 8 21M14.5 14 16 21"/>`),
+  sun: S(`<circle cx="9" cy="9" r="3.5"/><path d="M9 2v1.5M9 14.5V16M2 9h1.5M3.9 3.9 5 5M13 5l1.1-1.1"/><path d="M10 20h9a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.6.7A2.7 2.7 0 0 0 10 20Z"/>`),
   guide: S(`<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M9 8h7M9 12h5"/>`),
   places: S(`<path d="M12 21s-7-7.2-7-12a7 7 0 0 1 14 0c0 4.8-7 12-7 12Z"/><circle cx="12" cy="9" r="2.5"/>`),
   map: S(`<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"/>`),
@@ -73,7 +90,6 @@ const I = {
   card: S(`<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/>`),
   bus: S(`<rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 11h14M8 21v-3M16 21v-3"/>`),
 };
-const LIFE_ICONS = ["trash", "clinic", "bus", "card"];
 
 // ---------- The steps (content lives in guide/<lang>.js) ----------
 const L = {
@@ -85,110 +101,241 @@ const PHASES = {
   arrive: [["entry"], ["phone"], ["tmoney"], ["school"], ["arc", ["hikorea"]], ["bank"], ["nhis", ["nhis"]], ["address", ["hikorea"]], ["work", ["hikorea"]], ["extend", ["hikorea"]]],
 };
 const linkLabel = { study: "l_study", visa: "l_visa", mofa: "l_mofa", hikorea: "l_hikorea", nhis: "l_nhis" };
+// each step has its own icon and color, so the list is easy to scan and to remember
+const STEP_LOOK = {
+  admission: ["doc", "#6d5dfc"], visa: ["passport", "#0ea5e9"], papers: ["folder", "#f59e0b"], housing: ["home", "#16a34a"],
+  insurance: ["shield", "#e11d48"], money: ["wallet", "#059669"], packing: ["suitcase", "#ea580c"], apps: ["phone", "#7c3aed"],
+  trip: ["plane", "#0891b2"], entry: ["passport", "#0ea5e9"], phone: ["phone", "#7c3aed"], tmoney: ["card", "#2563eb"],
+  school: ["cap", "#6d5dfc"], arc: ["idcard", "#e11d48"], bank: ["bank", "#475569"], nhis: ["clinic", "#dc2626"],
+  address: ["home", "#16a34a"], work: ["briefcase", "#ea580c"], extend: ["calendar", "#0891b2"],
+};
+const ALL_STEPS = [...PHASES.before, ...PHASES.arrive].map(s => s[0]);
 
 let profile = store.get("profile", {}) || {};
 let done = store.get("done", {}) || {};
-let tab = ["guide", "places", "map", "help"].includes(store.get("tab")) ? store.get("tab") : "guide";
+const TABS = ["guide", "places", "life", "map", "help"];
+let tab = TABS.includes(store.get("tab")) ? store.get("tab") : "guide";
 let phase = store.get("phase") || (profile.where === "here" ? "arrive" : "before");
-let open = null; // the step whose details are shown; by default the next one to do
+let open = null; // the step whose details sheet is open
+let lifeOpen = null; // topic shown in the Life tab
 
 const hub = $("#hub"), main = $("#hubMain"), tabbar = $("#tabbar");
 
 function render() {
-  tabbar.innerHTML = ["guide", "places", "map", "help"].map(k => `<button type="button" class="tab" data-tab="${k}" aria-current="${tab === k ? "page" : "false"}">${I[k]}<span>${t("tab_" + k)}</span></button>`).join("");
+  tabbar.innerHTML = TABS.map(k => `<button type="button" class="tab" data-tab="${k}" aria-current="${tab === k ? "page" : "false"}">${I[k]}<span>${t("tab_" + k)}</span></button>`).join("");
   tabbar.querySelectorAll(".tab").forEach(b => b.onclick = () => go(b.dataset.tab));
   document.body.classList.toggle("tab-map", tab === "map");
   hub.hidden = tab === "map";
+  main.dataset.tab = tab;
   if (tab === "guide") renderGuide();
   else if (tab === "places") renderPlaces();
+  else if (tab === "life") renderLife();
   else if (tab === "help") renderHelp();
 }
 function go(k) {
-  if (k === tab) { if (k !== "map") main.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  closeSheet();
+  if (k === tab) { if (k === "life" && lifeOpen) { lifeOpen = null; renderLife(); } if (k !== "map") main.scrollTo({ top: 0, behavior: "smooth" }); return; }
   tab = k; store.set("tab", k);
   render();
   if (k !== "map") main.scrollTop = 0;
   dispatchEvent(new CustomEvent("wv-tab", { detail: k }));
 }
 
+// ---------- Dates: countdown to arrival and real deadlines counted from it ----------
+const DAY = 864e5;
+const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const parseDay = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const addMonths = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
+const fmtDay = d => d.toLocaleDateString(lang, { day: "numeric", month: "long", year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined });
+const daysBetween = (a, b) => Math.round((b - a) / DAY);
+function timeline() {
+  const arr = parseDay(profile.date); if (!arr) return null;
+  const now = today0(), diff = daysBetween(now, arr), out = { items: [] };
+  if (diff > 1) out.head = t("daysTo", { n: diff });
+  else if (diff === 1) out.head = t("daysTo1");
+  else if (diff === 0) out.head = t("today");
+  else out.head = t("daysIn", { n: -diff });
+  out.sub = t("arrival", { d: fmtDay(arr) });
+  out.count = diff > 0 ? diff : null;
+  // registration within 90 days of entry (HiKorea / Study in Korea)
+  if (!done.arc) {
+    const end = addDays(arr, 90), left = daysBetween(now, end);
+    if (left >= 0) out.items.push({ k: left <= 14 ? "warn" : "info", icon: "idcard", txt: t("arcLeft", { n: left, d: fmtDay(end) }) });
+    else out.items.push({ k: "bad", icon: "idcard", txt: t("arcLate", { d: fmtDay(end) }) });
+  }
+  if (profile.study === "d4") {
+    const six = addMonths(arr, 6);
+    if (six > now) {
+      out.items.push({ k: "info", icon: "clinic", txt: t("d4Nhis", { d: fmtDay(six) }) });
+      if (!done.work) out.items.push({ k: "info", icon: "briefcase", txt: t("d4Work", { d: fmtDay(six) }) });
+    }
+  }
+  return out;
+}
+
 // ---------- Guide ----------
 const studyName = () => profile.study === "d2" ? t("studyD2") : profile.study === "d4" ? t("studyD4") : t("studyUnsure");
+function ring(n, m) {
+  const r = 26, c = 2 * Math.PI * r, f = m ? n / m : 0;
+  return `<svg class="ring" viewBox="0 0 64 64" role="img" aria-label="${esc(t("progress", { n, m }))}"><circle cx="32" cy="32" r="${r}" class="ring-bg"/><circle cx="32" cy="32" r="${r}" class="ring-fg" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle">${Math.round(f * 100)}%</text></svg>`;
+}
+const SKYLINE = `<svg class="skyline" viewBox="0 0 360 70" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path d="M0 70V52h14v-8h10v14h8V40h12v30M44 70V48h16v-6h8v28M68 70V30h4v-6h2v-14h2v14h2v6h4v46M86 70V44h14v26M100 70V36h18v34M118 70V50h10v-8h12v28M140 70V42h20v28M160 70V54h12V38h10v32M182 70V46h16v24M198 70V34h6v-8h8v8h6v36M218 70V50h14v20M232 70V40h18v30M250 70V52h10V44h12v26M272 70V36h14v34M286 70V48h18v22M304 70V40h12v-6h8v36M324 70V50h16v20M340 70V44h20v26Z"/><path d="M0 70q90-26 180-10t180-6v16Z" class="hill"/></svg>`;
 function renderGuide() {
-  const asking = !profile.where ? "where" : !profile.study ? "study" : null;
-  let html = `<section class="hero-card">
-      <div class="hero-buddy">${buddy(asking ? "wave" : "happy", "big")}</div>
-      <div><h1 class="h1">${t("hello")}</h1><p class="lead">${t("helloSub")}</p></div>
+  const asking = !profile.where ? "where" : !profile.study ? "study" : !profile.dateAsked ? "date" : null;
+  const total = ALL_STEPS.filter(id => done[id]).length;
+  const tl = asking ? null : timeline();
+  let html = `<section class="hero-card${asking ? "" : " has-ring"}">
+      ${SKYLINE}
+      <div class="hero-buddy">${buddy(asking ? "wave" : total === ALL_STEPS.length ? "party" : "happy", "big")}</div>
+      <div class="hero-tx"><h1 class="h1">${t("hello")}</h1>${asking || !tl ? `<p class="lead">${t("helloSub")}</p>` : ""}
+      ${tl ? `<div class="countdown">${tl.count ? `<b class="cd-num">${tl.count}</b>` : ""}<span><b>${esc(tl.head)}</b><small>${esc(tl.sub)}</small></span></div>` : ""}</div>
+      ${asking ? "" : `<div class="hero-ring">${ring(total, ALL_STEPS.length)}</div>`}
     </section>`;
   if (asking === "where") {
-    html += `<section class="g-ask" aria-labelledby="qWhere"><h2 class="h2" id="qWhere">${t("qWhere")}</h2>
+    html += `<section class="g-ask" aria-labelledby="qWhere"><span class="ask-step">1/3</span><h2 class="h2" id="qWhere">${t("qWhere")}</h2>
       <div class="choices"><button class="choice" type="button" data-where="before">${I.plane}<b>${t("whereBefore")}</b></button>
       <button class="choice" type="button" data-where="here">${I.home}<b>${t("whereHere")}</b></button></div></section>`;
   } else if (asking === "study") {
-    html += `<section class="g-ask" aria-labelledby="qStudy"><h2 class="h2" id="qStudy">${t("qStudy")}</h2>
-      <div class="choices three"><button class="choice" type="button" data-study="d2"><b>${t("studyD2")}</b><small>${t("studyD2Sub")}</small></button>
-      <button class="choice" type="button" data-study="d4"><b>${t("studyD4")}</b><small>${t("studyD4Sub")}</small></button>
-      <button class="choice" type="button" data-study="unsure"><b>${t("studyUnsure")}</b></button></div></section>`;
+    html += `<section class="g-ask" aria-labelledby="qStudy"><span class="ask-step">2/3</span><h2 class="h2" id="qStudy">${t("qStudy")}</h2>
+      <div class="choices three"><button class="choice" type="button" data-study="d2">${I.cap}<b>${t("studyD2")}</b><small>${t("studyD2Sub")}</small></button>
+      <button class="choice" type="button" data-study="d4">${I.chat}<b>${t("studyD4")}</b><small>${t("studyD4Sub")}</small></button>
+      <button class="choice" type="button" data-study="unsure">${I.help}<b>${t("studyUnsure")}</b></button></div></section>`;
+  } else if (asking === "date") {
+    const q = profile.where === "here" ? "qDateHere" : "qDateBefore";
+    html += `<section class="g-ask" aria-labelledby="qDate"><span class="ask-step">3/3</span><h2 class="h2" id="qDate">${t(q)}</h2>
+      <p class="lead small">${t("dateHint")}</p>
+      <div class="datebox"><label class="datefield">${I.calendar}<input type="date" id="arrDate" value="${esc(profile.date || "")}" aria-label="${esc(t(q))}"></label>
+      <button class="btn go" type="button" id="dateSave">${t("dateSave")}</button></div>
+      <button class="g-link" type="button" id="dateSkip">${t("dateSkip")}</button></section>`;
   } else {
     html += `<div class="profile">${I.user}<span>${esc(t("profile", { where: profile.where === "here" ? t("whereHere") : t("whereBefore"), study: studyName() }))}</span><button class="g-link" type="button" id="changeProfile">${t("change")}</button></div>`;
+    if (tl?.items.length) html += `<ul class="deadlines">${tl.items.map(x => `<li class="dl ${x.k}">${I[x.icon]}<span>${esc(x.txt)}</span></li>`).join("")}</ul>`;
+    html += `<button class="g-link datelink" type="button" id="editDate">${I.calendar}${t(profile.date ? "editDate" : "qDate" + (profile.where === "here" ? "Here" : "Before"))}</button>`;
+    html += renderPhase();
   }
-  if (!asking) html += renderPhase();
   main.innerHTML = html;
   main.querySelectorAll("[data-where]").forEach(b => b.onclick = () => {
     profile.where = b.dataset.where; store.set("profile", profile);
     phase = profile.where === "here" ? "arrive" : "before"; store.set("phase", phase); open = null; renderGuide();
   });
   main.querySelectorAll("[data-study]").forEach(b => b.onclick = () => { profile.study = b.dataset.study; store.set("profile", profile); renderGuide(); });
+  const saveDate = v => { profile.date = v; profile.dateAsked = true; store.set("profile", profile); renderGuide(); main.scrollTop = 0; };
+  $("#dateSave")?.addEventListener("click", () => { const v = $("#arrDate").value; if (parseDay(v)) saveDate(v); else $("#arrDate").focus(); });
+  $("#dateSkip")?.addEventListener("click", () => saveDate(""));
+  $("#editDate")?.addEventListener("click", () => { profile.dateAsked = false; store.set("profile", profile); renderGuide(); });
   $("#changeProfile")?.addEventListener("click", () => { profile = {}; store.set("profile", profile); renderGuide(); });
   main.querySelectorAll("[data-phase]").forEach(b => b.onclick = () => { phase = b.dataset.phase; store.set("phase", phase); open = null; renderGuide(); });
-  main.querySelectorAll(".step-head").forEach(b => b.onclick = () => {
-    open = open === b.dataset.id ? "" : b.dataset.id; renderGuide();
-    const el = main.querySelector(`.step-head[data-id="${b.dataset.id}"]`);
-    if (el && el.getBoundingClientRect().top < main.getBoundingClientRect().top) el.scrollIntoView({ block: "start" });
-  });
-  main.querySelectorAll("[data-done]").forEach(b => b.onclick = () => toggleDone(b.dataset.done));
+  main.querySelectorAll("[data-pin]").forEach(b => b.onclick = () => openStep(b.dataset.pin));
 }
 function count(p) { const ids = PHASES[p].map(s => s[0]); return { n: ids.filter(id => done[id]).length, m: ids.length }; }
 function renderPhase() {
   const steps = PHASES[phase], c = count(phase);
   const nextId = steps.find(([id]) => !done[id])?.[0];
-  const shown = open === null ? nextId : open;
   const segs = ["before", "arrive"].map(p => { const k = count(p); return `<button class="seg" type="button" role="tab" data-phase="${p}" aria-selected="${phase === p}">${p === "before" ? I.plane : I.home}<span>${t("phase_" + p)}</span><small>${k.n}/${k.m}</small></button>`; }).join("");
-  const list = steps.map(([id, links = []], i) => {
+  const ns = nextId && (g.steps[nextId] || G.en?.steps[nextId]);
+  const nextCard = ns ? `<button class="nextpin" type="button" data-pin="${nextId}" style="--c:${STEP_LOOK[nextId][1]}">
+      ${cover(STEP_LOOK[nextId][0], STEP_LOOK[nextId][1], 0, "wide")}
+      <span class="pin-tx"><small>${t("nextUp")}</small><b>${esc(ns.t)}</b><span class="pin-sub">${esc(ns.s)}</span><span class="pill go">${t("openStep")}${I.arrow}</span></span>
+    </button>` : "";
+  const pins = steps.map(([id], i) => {
     const s = g.steps[id] || G.en?.steps[id]; if (!s) return "";
-    const isDone = !!done[id], isOpen = shown === id;
-    const notes = profile.study === "d2" ? [s.d2] : profile.study === "d4" ? [s.d4] : [s.d2, s.d4];
-    const forYou = notes.filter(Boolean);
-    return `<li class="g-step${isDone ? " done" : ""}${id === nextId ? " next" : ""}">
-      <button class="step-head" type="button" data-id="${id}" aria-expanded="${isOpen}">
-        <span class="num" aria-hidden="true">${isDone ? I.check : i + 1}</span>
-        <span class="step-tx"><b>${esc(s.t)}</b>${id === nextId && !isOpen ? `<small class="nextlbl">${t("next")}</small>` : ""}</span>
-        <svg class="g-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-      </button>
-      ${isOpen ? `<div class="step-body">
-        <p>${esc(s.s)}</p>
+    const isDone = !!done[id];
+    return `<button class="pin${isDone ? " done" : ""}${id === nextId ? " next" : ""}" type="button" data-pin="${id}" style="--c:${STEP_LOOK[id][1]};--i:${i}">
+      ${cover(STEP_LOOK[id][0], STEP_LOOK[id][1], i)}
+      ${isDone ? `<span class="pin-done">${I.check}${t("isDone")}</span>` : ""}
+      <span class="pin-tx"><small>${i + 1}/${steps.length}${id === nextId ? ` · <em>${t("next")}</em>` : ""}</small><b>${esc(s.t)}</b></span>
+    </button>`;
+  });
+  const pct = Math.round(c.n / c.m * 100);
+  return `<div class="segs" role="tablist">${segs}</div>
+    <div class="progress"><div class="g-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${c.m}" aria-valuenow="${c.n}" aria-label="${esc(t("progress", c))}"><i style="width:${pct}%"></i></div><span>${t("progress", c)}</span></div>
+    ${c.n === c.m ? `<div class="badge"><div class="badge-buddy">${buddy("party")}</div><div><b>${t("badge_" + phase)}</b><p>${t("allDone")}</p></div></div>` : nextCard}
+    ${masonry(pins)}
+    <p class="disclaimer">${t("disclaimer")}</p>`;
+}
+// Pinterest-style board: cards dealt left-right in reading order, 2 columns on phones, 3 on wide screens
+function masonry(items) {
+  const n = innerWidth >= 680 ? 3 : 2, cols = Array.from({ length: n }, () => []);
+  items.forEach((h, i) => cols[i % n].push(h));
+  return `<div class="board" style="--cols:${n}">${cols.map(c => `<div class="board-col">${c.join("")}</div>`).join("")}</div>`;
+}
+let lastCols = innerWidth >= 680 ? 3 : 2;
+addEventListener("resize", () => { const n = innerWidth >= 680 ? 3 : 2; if (n !== lastCols) { lastCols = n; if (tab === "guide" || (tab === "life" && !lifeOpen)) render(); } });
+// Illustrated cover: the step's color as a soft gradient, big icon, floating shapes. Heights vary so the board looks like a mosaic.
+const HEIGHTS = [150, 196, 128, 176, 214, 140, 186, 160, 204, 132];
+function cover(icon, color, i, kind = "") {
+  const h = kind ? 0 : HEIGHTS[i % HEIGHTS.length];
+  return `<span class="cover ${kind}" style="--c:${color};${h ? `height:${h}px` : ""}" aria-hidden="true">
+    <i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i>
+    <span class="cover-ic">${I[icon] || I.bulb}</span></span>`;
+}
+// Step details open in a sheet over the board (focus goes in, Esc or the backdrop closes it)
+function openStep(id) {
+  const all = [...PHASES.before, ...PHASES.arrive], [, links = []] = all.find(x => x[0] === id) || [];
+  const s = g.steps[id] || G.en?.steps[id]; if (!s) return;
+  const [ic, color] = STEP_LOOK[id], isDone = !!done[id];
+  const notes = profile.study === "d2" ? [s.d2] : profile.study === "d4" ? [s.d4] : [s.d2, s.d4];
+  const forYou = notes.filter(Boolean);
+  closeSheet();
+  const el = document.createElement("div");
+  el.className = "gsheet-wrap"; el.id = "gsheet";
+  el.innerHTML = `<div class="gsheet-bg"></div>
+    <section class="gsheet" role="dialog" aria-modal="true" aria-labelledby="gsTitle" style="--c:${color}">
+      ${cover(ic, color, 0, "sheet")}
+      <button class="gs-close" type="button" aria-label="${esc(T[lang]?.close || "Close")}">${I.x}</button>
+      <div class="gs-body">
+        <h2 class="h1" id="gsTitle">${esc(s.t)}</h2>
+        <p class="lead">${esc(s.s)}</p>
         ${forYou.length ? `<div class="g-note"><b>${t("forYou")}</b>${forYou.map(n => `<p>${esc(n)}</p>`).join("")}</div>` : ""}
         ${s.need?.length ? `<h3 class="h3">${t("need")}</h3><ul class="need">${s.need.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
         ${s.tip ? `<div class="tipbox">${I.bulb}<p><b>${t("tip")}:</b> ${esc(s.tip)}</p></div>` : ""}
         ${links.length ? `<div class="links">${links.map(k => `<a class="olink" href="${L[k]}" target="_blank" rel="noopener">${I.link}<span><small>${t("official")}</small>${esc(t(linkLabel[k]))}</span></a>`).join("")}</div>` : ""}
-        <button class="btn ${isDone ? "" : "go"} wide" type="button" data-done="${id}" aria-pressed="${isDone}">${isDone ? `${I.check}${t("isDone")} · ${t("undo")}` : `${I.check}${t("markDone")}`}</button>
-      </div>` : ""}
-    </li>`;
-  }).join("");
-  const pct = Math.round(c.n / c.m * 100);
-  return `<div class="segs" role="tablist">${segs}</div>
-    <div class="progress"><div class="g-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${c.m}" aria-valuenow="${c.n}" aria-label="${esc(t("progress", c))}"><i style="width:${pct}%"></i></div><span>${t("progress", c)}</span></div>
-    ${c.n === c.m ? `<div class="alldone">${buddy("happy")}<p>${t("allDone")}</p></div>` : ""}
-    <ol class="g-steps">${list}</ol>
-    <p class="disclaimer">${t("disclaimer")}</p>`;
+      </div>
+      <div class="gs-foot"><button class="btn ${isDone ? "" : "go"} wide" type="button" id="gsDone" aria-pressed="${isDone}">${isDone ? `${I.check}${t("isDone")} · ${t("undo")}` : `${I.check}${t("markDone")}`}</button></div>
+    </section>`;
+  document.body.appendChild(el);
+  document.body.classList.add("sheet-open");
+  const close = () => closeSheet();
+  el.querySelector(".gsheet-bg").onclick = close;
+  el.querySelector(".gs-close").onclick = close;
+  el.querySelector("#gsDone").onclick = () => { closeSheet(); toggleDone(id); };
+  el.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+  requestAnimationFrame(() => { el.classList.add("in"); el.querySelector(".gs-close").focus(); });
+  open = id;
+}
+function closeSheet() {
+  const el = $("#gsheet"); if (!el) return;
+  el.remove(); document.body.classList.remove("sheet-open");
+  const back = open && main.querySelector(`[data-pin="${open}"]`); open = null; back?.focus({ preventScroll: true });
 }
 function toggleDone(id) {
   done[id] = !done[id]; if (!done[id]) delete done[id];
   store.set("done", done);
-  if (done[id]) { navigator.vibrate?.(15); open = null; }
+  if (done[id]) navigator.vibrate?.(15);
   const c = count(phase);
   if (done[id] && c.n === c.m) celebrate();
   renderGuide();
-  if (done[id]) main.querySelector(".g-step.next")?.scrollIntoView({ block: "start", behavior: "smooth" }); // carry on with the next one
+  if (done[id]) main.querySelector(c.n === c.m ? ".badge" : ".nextpin")?.scrollIntoView({ block: "center", behavior: "smooth" }); // carry on with the next one
+}
+
+// ---------- Life in Korea: topics with practical tips ----------
+const TOPIC_LOOK = { transport: ["bus", "#2563eb"], food: ["food", "#ea580c"], health: ["clinic", "#dc2626"], money: ["card", "#059669"], home: ["home", "#16a34a"], manners: ["bow", "#db2777"], weather: ["sun", "#f59e0b"], korean: ["chat", "#6d5dfc"], safety: ["shield", "#475569"] };
+function renderLife() {
+  const topics = g.topics || G.en?.topics || [];
+  const tp = lifeOpen && topics.find(x => x.id === lifeOpen);
+  if (tp) {
+    const [ic, color] = TOPIC_LOOK[tp.id] || ["bulb", "#6d5dfc"];
+    main.innerHTML = `<button class="g-link back" type="button" id="lifeBack">${I.back}${t("back")}</button>
+      <section class="topic-hero" style="--c:${color}">${cover(ic, color, 0, "hero")}<div class="th-tx"><h1 class="h1">${esc(tp.t)}</h1><p class="lead">${esc(tp.s)}</p></div></section>
+      <ol class="tips">${tp.tips.map((x, i) => `<li class="tipcard" style="--c:${color};--i:${i}"><span class="tn">${i + 1}</span><div><b>${esc(x.t)}</b><p>${esc(x.s)}</p></div></li>`).join("")}</ol>
+      <p class="disclaimer">${t("disclaimer")}</p>`;
+    $("#lifeBack").onclick = () => { lifeOpen = null; renderLife(); main.scrollTop = 0; };
+    return;
+  }
+  const pins = topics.map((x, i) => { const [ic, color] = TOPIC_LOOK[x.id] || ["bulb", "#6d5dfc"]; return `<button class="pin" type="button" data-topic="${x.id}" style="--c:${color};--i:${i}">${cover(ic, color, i + 3)}<span class="pin-tx"><b>${esc(x.t)}</b><span class="pin-sub">${esc(x.s)}</span><small class="pin-meta">${t("tipsCount", { n: x.tips.length })}</small></span></button>`; });
+  main.innerHTML = `<h1 class="h1 pad">${t("lifeTabTitle")}</h1><p class="lead pad">${t("lifeSub")}</p>${masonry(pins)}`;
+  main.querySelectorAll("[data-topic]").forEach(b => b.onclick = () => { lifeOpen = b.dataset.topic; renderLife(); main.scrollTop = 0; });
 }
 
 // ---------- Places: real places from OpenStreetMap around you or a chosen area ----------
@@ -206,6 +353,13 @@ const PCATS = {
   laundry: { color: "#0891b2", r: 1500, q: 'nwr["shop"~"^(laundry|dry_cleaning)$"]' },
   sights: { color: "#6d5dfc", r: 6000, q: 'nwr["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$"]["wikidata"];nwr["historic"]["wikidata"]["name"]' },
 };
+// well-known student neighborhoods (station areas), to explore before you even arrive
+const AREAS = [
+  { name: "Sinchon · 신촌", lat: 37.5552, lon: 126.9369 }, { name: "Hongdae · 홍대", lat: 37.5572, lon: 126.9245 },
+  { name: "Anam · 안암", lat: 37.5863, lon: 127.0292 }, { name: "Hyehwa · 혜화", lat: 37.5822, lon: 127.0019 },
+  { name: "Seoul Nat'l Univ. · 서울대입구", lat: 37.4812, lon: 126.9527 }, { name: "Busan PNU · 부산대", lat: 35.2298, lon: 129.0892 },
+  { name: "Kyungsung·Pukyong · 경성대·부경대", lat: 35.1375, lon: 129.1002 },
+];
 const inKorea = p => p && p.lat > 33 && p.lat < 38.7 && p.lon > 124.5 && p.lon < 132;
 function km(a, b) {
   const r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r;
@@ -250,7 +404,8 @@ function renderPlaces() {
   const saved = savedList();
   const list = at && !P.busy && !P.error ? P.items.map((p, i) => {
     const on = saved.some(s => km(s, p) < .03);
-    return `<li class="place">
+    return `<li class="place" style="--c:${PCATS[P.cat].color}">
+      <span class="place-ic" aria-hidden="true">${I[P.cat]}</span>
       <div class="place-tx"><b>${esc(p.name)}</b>${p.ko && p.ko !== p.name ? `<span class="ko" lang="ko">${esc(p.ko)}</span>` : ""}
         <span class="g-meta">${esc(t("away", { d: fmtDist(km(at, p)) }))}${p.hours ? ` · ${I.clock}<span>${esc(p.hours)}</span>` : ""}</span></div>
       <div class="place-act"><button class="btn small" type="button" data-show="${i}">${I.map}${t("showMap")}</button>
@@ -264,6 +419,7 @@ function renderPlaces() {
         <button class="seg" type="button" role="radio" id="nearPick" aria-checked="${!P.useMe}">${I.search}<span>${P.area && !P.useMe ? esc(P.area.name) : t("nearPick")}</span></button>
       </div>
       ${!P.useMe ? `<div class="areabox"><input id="areaQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t("areaPlaceholder"))}" aria-label="${esc(t("areaPlaceholder"))}" value="">
+        ${!P.sugs ? `<p class="near-l quick">${t("areasQuick")}</p><div class="areachips">${AREAS.map((a, i) => `<button type="button" class="achip" data-qa="${i}" aria-pressed="${!!P.area && km(P.area, a) < .05}">${esc(a.name)}</button>`).join("")}</div>` : ""}
         ${P.sugs ? `<div class="areasugs" role="listbox">${P.sugs.length ? P.sugs.map((s, i) => `<button type="button" role="option" data-a="${i}"><b>${esc(s.name)}</b><small>${esc(s.sub)}</small></button>`).join("") : `<p>${t("searchNone")}</p>`}</div>` : ""}</div>` : ""}
     </div>
     <div class="pcats">${cats}</div>
@@ -279,6 +435,7 @@ function renderPlaces() {
     aq.oninput = () => { P.areaText = aq.value; clearTimeout(P.deb); P.deb = setTimeout(() => searchArea(aq.value), 350); };
     aq.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); searchArea(aq.value, true); } };
   }
+  main.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => { const a = AREAS[+b.dataset.qa]; P.area = { ...a }; store.set("area", P.area); P.sugs = null; fetchPlaces(); });
   main.querySelectorAll("[data-a]").forEach(b => b.onclick = () => {
     const s = P.sugs[+b.dataset.a];
     P.area = { name: s.name, lat: s.lat, lon: s.lon }; store.set("area", P.area); P.sugs = null; P.areaText = ""; fetchPlaces();
@@ -350,8 +507,6 @@ function renderHelp() {
   main.innerHTML = `<h1 class="h1 pad">${t("helpTitle")}</h1>
     <h2 class="h2 pad">${t("emergency")}</h2>
     <div class="nums">${nums.map(([n, k]) => `<a class="num-card${n.length === 3 ? " sos" : ""}" href="tel:${n}" aria-label="${esc(t("call", { n }) + ": " + t(k))}"><b>${n}</b><span>${t(k)}</span>${I.phone}</a>`).join("")}</div>
-    <h2 class="h2 pad">${t("lifeTitle")}</h2>
-    <div class="life">${(g.life || []).map((x, i) => `<div class="life-card">${I[LIFE_ICONS[i]] || I.bulb}<div><b>${esc(x.t)}</b><p>${esc(x.s)}</p></div></div>`).join("")}</div>
     ${lang !== "ko" ? `<h2 class="h2 pad">${t("phrasesTitle")}</h2>
     <div class="phrases">${(g.phrases || []).map((p, i) => `<button class="phrase" type="button" data-ph="${i}" aria-label="${esc(p.m + " — " + t("tapToHear"))}"><span><b lang="ko">${esc(p.ko)}</b><small>${esc(p.ro)}</small></span><span class="pm">${esc(p.m)}</span>${I.speaker}</button>`).join("")}</div>` : ""}
     <h2 class="h2 pad">${t("linksTitle")}</h2>

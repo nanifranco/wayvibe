@@ -4,8 +4,10 @@ Asistente para estudiantes internacionales que se vienen a vivir a Corea y no co
 
 ## La guía (pantalla principal)
 
-- **Guía**: dos listas de pasos que se marcan como hechos (se guardan en tu teléfono). *Antes de venir*: carta de admisión, visa, documentos, vivienda, seguro, dinero, maleta, apps y llegada. *Ya en Corea*: inmigración, teléfono, T-money, registro en la universidad, tarjeta de residencia (ARC), banco, seguro nacional (NHIS), cambio de dirección, permiso para trabajar y renovación. Pregunta si ya estás en Corea y qué vas a estudiar (D-2 o D-4) para mostrar lo que te toca.
-- **Lugares**: sitios reales de OpenStreetMap cerca de ti o de tu universidad/barrio (sirve aunque aún no estés en Corea): tienda 24 h, supermercado, Daiso, comer, cafés, farmacia, clínica, banco, tienda de móviles, lavandería y lugares para conocer. "Ver en el mapa" lo abre en el mapa.
+- **Diseño**: tablero tipo Pinterest, con tarjetas ilustradas de distintos tamaños; cada paso se abre en una hoja con los detalles.
+- **Guía**: cuenta atrás hasta tu llegada y plazos reales calculados desde esa fecha (tarjeta de residencia en 90 días; con D-4, seguro y permiso de trabajo a los 6 meses), tu próximo paso destacado y dos listas de pasos que se marcan como hechos (se guardan en tu teléfono). *Antes de venir*: carta de admisión, visa, documentos, vivienda, seguro, dinero, maleta, apps y llegada. *Ya en Corea*: inmigración, teléfono, T-money, registro en la universidad, tarjeta de residencia (ARC), banco, seguro nacional (NHIS), cambio de dirección, permiso para trabajar y renovación. Pregunta si ya estás en Corea y qué vas a estudiar (D-2 o D-4) para mostrar lo que te toca.
+- **Lugares**: sitios reales de OpenStreetMap cerca de ti o de tu universidad/barrio (sirve aunque aún no estés en Corea): tienda 24 h, supermercado, Daiso, comer, cafés, farmacia, clínica, banco, tienda de móviles, lavandería y lugares para conocer. También hay zonas de estudiantes listas (Sinchon, Hongdae, Anam, Hyehwa, Seoul Nat'l Univ., Busan). "Ver en el mapa" lo abre en el mapa.
+- **Vida**: 9 temas con consejos para los primeros meses: moverte, comer, salud, dinero, tu casa, costumbres, clima, coreano y seguridad.
 - **Mapa**: el mapa de siempre, ahora como pestaña.
 - **Ayuda**: 112, 119, 1345 y 1330, vida diaria (basura, médico, transporte, pagos), frases en coreano con audio y webs oficiales.
 - Los datos de trámites vienen de fuentes oficiales (HiKorea, Study in Korea, NHIS) y cada paso enlaza su fuente. Contenido en `guide/<idioma>.js`; si una norma cambia, se edita ahí.
