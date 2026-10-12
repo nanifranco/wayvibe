@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Wayvibe</title>
   <meta property="og:title" content="Wayvibe">
-  <meta property="og:description" content="Rutas reales a tu manera: la más rápida, la más turística, con sombra, con restaurantes o sin escaleras.">
+  <meta property="og:description" content="Tu guía para venir a estudiar a Corea: visa, tarjeta de residencia, banco, seguro, lugares útiles cerca y mapa.">
   <meta property="og:image" content="icon.svg">
-  <meta name="description" content="Mapa con rutas reales a tu manera: la más rápida, la más turística, con sombra, con restaurantes o sin escaleras.">
+  <meta name="description" content="Guía para estudiantes internacionales en Corea: qué hacer antes de venir y al llegar, lugares útiles cerca y mapa con rutas reales.">
   <meta name="theme-color" content="#fbf6ee">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -22,7 +22,7 @@
 <body>
   <!-- the greeting covers the first paint, so the app never flashes half-built -->
   <div class="splash" id="splash" aria-hidden="true"></div>
-  <noscript><div class="fatal"><p>Wayvibe necesita JavaScript. Actívalo en tu navegador para ver el mapa.</p></div></noscript>
+  <noscript><div class="fatal"><p>Wayvibe necesita JavaScript. Actívalo en tu navegador para ver la guía.</p></div></noscript>
   <div id="map" role="application" aria-label="Map"></div>
 
   <div class="ui" id="ui">
@@ -64,10 +64,26 @@
   </button>
   <div class="navbottom card" id="navbottom" hidden></div>
 
+
+  <div class="hub" id="hub">
+    <header class="hub-top">
+      <button class="hub-brand" id="hubBrand" type="button" aria-label="Wayvibe"><svg viewBox="0 0 40 40"><path d="M20 9q-.5-4 2-6" fill="none" stroke="#3fbf6f" stroke-width="2" stroke-linecap="round"/><path d="M22 3.5q4.5-3 7.5 0-3.5 3.5-7.5 0z" fill="#4ade80"/><path d="M20 8.5c8 0 13 5.2 13 11.6 0 5-3.4 8.6-7 11.4l-6 4.6-6-4.6c-3.6-2.8-7-6.4-7-11.4C7 13.7 12 8.5 20 8.5z" fill="#fff"/><ellipse cx="15.5" cy="20" rx="2.3" ry="2.8" fill="#2e1d63"/><ellipse cx="24.5" cy="20" rx="2.3" ry="2.8" fill="#2e1d63"/><circle cx="14.8" cy="19" r=".9" fill="#fff"/><circle cx="23.8" cy="19" r=".9" fill="#fff"/><ellipse cx="11.6" cy="24" rx="2.1" ry="1.3" fill="#f9a8d4"/><ellipse cx="28.4" cy="24" rx="2.1" ry="1.3" fill="#f9a8d4"/><path d="M18.4 24.2q.8 1 1.6 0 .8 1 1.6 0" fill="none" stroke="#2e1d63" stroke-width="1.1" stroke-linecap="round"/></svg><span>Wayvibe</span></button>
+      <label class="langbtn hub-lang">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg>
+        <span id="hubLangCode">ES</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+        <select id="hubLang" aria-label="Language"></select>
+      </label>
+    </header>
+    <main class="hub-main" id="hubMain"></main>
+  </div>
+  <nav class="tabbar" id="tabbar" aria-label="Wayvibe"></nav>
+
   <div class="offline" id="offline" role="alert" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script type="module" src="splash.js"></script>
+  <script type="module" src="hub.js"></script>
   <script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script type="module" src="app.js"></script>
 </body>
