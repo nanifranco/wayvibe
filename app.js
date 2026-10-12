@@ -45,16 +45,19 @@ function applyI18n() {
 const langSel = $("#lang");
 langSel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 langSel.value = lang;
-langSel.onchange = () => {
-  lang = langSel.value;
+langSel.onchange = () => setLang(langSel.value);
+function setLang(l, fromHub = false) {
+  if (!LANGS[l] || (l === lang && fromHub)) return;
+  lang = l; langSel.value = l;
   store.set("lang", lang);
+  if (!fromHub) dispatchEvent(new CustomEvent("wv-lang", { detail: lang }));
   applyI18n();
   setLabelLanguage();
   renderCats();
   if (me) reverse(me.lat, me.lon).then(showWhere); else renderWhere();
   if (view === "route" && R.mode !== "transit") { R.fast = {}; routeNow(); } // instructions come in the route language
   else rerenderSheet();
-};
+}
 applyI18n();
 // Updates: check for a new version on every open and whenever you come back to the app; when the new worker takes over, reload once.
 if ("serviceWorker" in navigator && location.protocol === "https:") {
@@ -333,7 +336,26 @@ function tintMap() {
   }
 }
 map.on("style.load", () => { tintMap(); setLabelLanguage(); ensureLayers(); });
-map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); });
+// The map is a secondary tab now: ask for location and resume a trip only when you actually open it.
+let mapLoaded = false, mapVisible = document.body.classList.contains("tab-map"), mapStarted = false;
+function mapShown() {
+  if (!mapLoaded || !mapVisible) return;
+  map.resize(); renderCats();
+  if (mapStarted) return;
+  mapStarted = true; geo.trigger(); resumeTrip();
+}
+map.on("load", () => { mapLoaded = true; mapShown(); dispatchEvent(new Event("wv-ready")); });
+addEventListener("wv-tab", e => { mapVisible = e.detail === "map"; mapShown(); });
+// the guide (hub.js) has its own language picker; both stay in step through window events (registered once the map exists)
+addEventListener("wv-setlang", e => setLang(e.detail, true));
+// "See on map" from the places list in the guide
+addEventListener("wv-show-place", e => {
+  const p = e.detail; if (!p) return;
+  if (NAV.active) return;
+  closeAll(false);
+  const open = () => { mapShown(); choose(p); };
+  if (mapLoaded) open(); else map.once("load", open);
+});
 if (location.hostname === "localhost") window.wvDebug = { map, get R() { return R; } };
 function resumeTrip() {
   const tr = store.get("trip");

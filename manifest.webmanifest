@@ -1,12 +1,12 @@
 {
   "name": "Wayvibe",
   "short_name": "Wayvibe",
-  "description": "Mapa con rutas reales a tu manera.",
+  "description": "Tu guía para venir a estudiar a Corea: trámites, lugares útiles y mapa.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f6f8",
-  "theme_color": "#2563eb",
+  "background_color": "#fbf6ee",
+  "theme_color": "#fbf6ee",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
