@@ -1,6 +1,8 @@
 import { LANGS, T, PREF_WORDS, ACCESS_WORDS, ROUTE_LANG } from "./i18n.js";
-import { buddy, celebrate } from "./mascot.js";
-import { VERSION } from "./splash.js";
+import { statusIcon, celebrate } from "./icons.js";
+import { VERSION } from "./version.js";
+import { AI_T, AI_WORDS, AREAS, TASTES } from "./ai-i18n.js";
+for (const l in AI_T) Object.assign(T[l] ||= {}, AI_T[l]);
 
 // ---------- Services (all free, no key) ----------
 // Map: OpenFreeMap · Search: Photon · Address: Nominatim · Walk/bike/car: Valhalla (FOSSGIS)
@@ -45,19 +47,16 @@ function applyI18n() {
 const langSel = $("#lang");
 langSel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 langSel.value = lang;
-langSel.onchange = () => setLang(langSel.value);
-function setLang(l, fromHub = false) {
-  if (!LANGS[l] || (l === lang && fromHub)) return;
-  lang = l; langSel.value = l;
+langSel.onchange = () => {
+  lang = langSel.value;
   store.set("lang", lang);
-  if (!fromHub) dispatchEvent(new CustomEvent("wv-lang", { detail: lang }));
   applyI18n();
   setLabelLanguage();
   renderCats();
   if (me) reverse(me.lat, me.lon).then(showWhere); else renderWhere();
   if (view === "route" && R.mode !== "transit") { R.fast = {}; routeNow(); } // instructions come in the route language
   else rerenderSheet();
-}
+};
 applyI18n();
 // Updates: check for a new version on every open and whenever you come back to the app; when the new worker takes over, reload once.
 if ("serviceWorker" in navigator && location.protocol === "https:") {
@@ -90,7 +89,7 @@ addEventListener("unhandledrejection", e => oops(e.reason));
 document.querySelector(".brand")?.addEventListener("click", () => toast(`Wayvibe v${VERSION}`));
 
 // ---------- Connection ----------
-function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${buddy("sleep")}<span>${t("offline")}</span>`; }
+function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${statusIcon("sleep")}<span>${t("offline")}</span>`; }
 addEventListener("offline", renderOffline);
 addEventListener("online", () => {
   renderOffline(); toast(t("backOnline"));
@@ -223,6 +222,25 @@ const ICON = {
   close: S(`<path d="M6 6l12 12M18 6 6 18"/>`),
   arrow: deg => S(`<path d="M12 20V5M6 11l6-6 6 6"/>`, `style="transform:rotate(${deg}deg)"`),
   round: S(`<path d="M12 21v-6M12 15a4 4 0 1 0-4-4M8 11l-2.5-1M8 11l1-2.5"/>`),
+  sun: S(`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>`),
+  moon: S(`<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>`),
+  partly: S(`<path d="M8 3v1.5M3.6 5.6l1 1M2 10h1.5M12.4 5.6l-1 1"/><path d="M5.5 11.5a3 3 0 0 1 5.6-1.8"/><path d="M8 20h9a4 4 0 0 0 .4-8 5 5 0 0 0-9.6 1.4A3.3 3.3 0 0 0 8 20Z"/>`),
+  cloud: S(`<path d="M7 19h10a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.4 1.6A3.8 3.8 0 0 0 7 19Z"/>`),
+  rain: S(`<path d="M7 15h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.5 1.4A3.4 3.4 0 0 0 7 15Z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>`),
+  snow: S(`<path d="M7 15h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.5 1.4A3.4 3.4 0 0 0 7 15Z"/><path d="M8 19h.01M12 21h.01M16 19h.01M10 22h.01M14 22h.01"/>`),
+  storm: S(`<path d="M7 15h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.5 1.4A3.4 3.4 0 0 0 7 15Z"/><path d="M12.5 15 10 19h3.5L11 23"/>`),
+  umbrella: S(`<path d="M3 12a9 9 0 0 1 18 0ZM12 12v7a2 2 0 0 0 4 0"/>`),
+  home: S(`<path d="M4 11 12 4l8 7v9h-5v-6H9v6H4Z"/>`),
+  sparkle: S(`<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7Z"/>`),
+  mic: S(`<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>`),
+  star: S(`<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8Z"/>`),
+  beer: S(`<path d="M6 8h10v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2ZM16 11h1.5a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H16M6 8a2.5 2.5 0 0 1 3-3.5A3 3 0 0 1 14 4a2.5 2.5 0 0 1 2 4"/>`),
+  museum: S(`<path d="M3 9 12 4l9 5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>`),
+  bag: S(`<path d="M5 8h14l-1 13H6ZM9 8V6a3 3 0 0 1 6 0v2"/>`),
+  book: S(`<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2ZM4 21V5M8 7h7"/>`),
+  icecream: S(`<path d="M8 11 12 21l4-10M7 10a5 5 0 0 1 10 0Z"/>`),
+  thumbUp: S(`<path d="M7 10v11H4V10ZM7 10l4-7a2 2 0 0 1 2.5 2.5L12.5 9H19a2 2 0 0 1 2 2.3l-1.3 7.5A2.5 2.5 0 0 1 17.2 21H7"/>`),
+  thumbDown: S(`<path d="M17 14V3h3v11ZM17 14l-4 7a2 2 0 0 1-2.5-2.5l1-3.5H5a2 2 0 0 1-2-2.3l1.3-7.5A2.5 2.5 0 0 1 6.8 3H17"/>`),
 };
 // Valhalla maneuver type → arrow pointing where you will actually turn (natural mapping)
 function manIcon(type) {
@@ -262,7 +280,7 @@ function hasWebGL() { try { const c = document.createElement("canvas"); return !
 // When there is no way to draw a map, say why and how to fix it instead of showing a blank screen
 function fatal(key) {
   dispatchEvent(new Event("wv-ready"));
-  document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${buddy("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${statusIcon("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
 }
 if (!(await ensureMapLib())) { fatal("noMapLib"); throw new Error("map library unavailable"); }
 if (!hasWebGL()) { fatal("noMap"); throw new Error("WebGL unavailable"); }
@@ -270,7 +288,7 @@ const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const map = new maplibregl.Map({
   container: "map",
   style: darkMQ.matches ? STYLE_DARK : STYLE_LIGHT,
-  center: [0, 25], zoom: 1.6,
+  center: [126.978, 37.5665], zoom: 11.5, // Seoul until we know where you are
   attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
@@ -336,26 +354,7 @@ function tintMap() {
   }
 }
 map.on("style.load", () => { tintMap(); setLabelLanguage(); ensureLayers(); });
-// The map is a secondary tab now: ask for location and resume a trip only when you actually open it.
-let mapLoaded = false, mapVisible = document.body.classList.contains("tab-map"), mapStarted = false;
-function mapShown() {
-  if (!mapLoaded || !mapVisible) return;
-  map.resize(); renderCats();
-  if (mapStarted) return;
-  mapStarted = true; geo.trigger(); resumeTrip();
-}
-map.on("load", () => { mapLoaded = true; mapShown(); dispatchEvent(new Event("wv-ready")); });
-addEventListener("wv-tab", e => { mapVisible = e.detail === "map"; mapShown(); });
-// the guide (hub.js) has its own language picker; both stay in step through window events (registered once the map exists)
-addEventListener("wv-setlang", e => setLang(e.detail, true));
-// "See on map" from the places list in the guide
-addEventListener("wv-show-place", e => {
-  const p = e.detail; if (!p) return;
-  if (NAV.active) return;
-  closeAll(false);
-  const open = () => { mapShown(); choose(p); };
-  if (mapLoaded) open(); else map.once("load", open);
-});
+map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); loadWeather(); setTimeout(maybeHello, 900); });
 if (location.hostname === "localhost") window.wvDebug = { map, get R() { return R; } };
 function resumeTrip() {
   const tr = store.get("trip");
@@ -366,7 +365,7 @@ function resumeTrip() {
   view = "route"; routeNow(true);
   toast(t("resumed"));
 }
-map.on("click", "wv-near", e => { const i = e.features?.[0]?.properties?.i; if (i != null && NEAR.items[i]) choose(NEAR.items[i]); });
+map.on("click", "wv-near", e => { const i = e.features?.[0]?.properties?.i, list = view === "ask" ? ASK.items : NEAR.items; if (i != null && list[i]) choose(list[i]); });
 map.on("mouseenter", "wv-near", () => map.getCanvas().style.cursor = "pointer");
 map.on("mouseleave", "wv-near", () => map.getCanvas().style.cursor = "");
 
@@ -381,6 +380,7 @@ geo.on("geolocate", e => {
     reverse(me.lat, me.lon).then(showWhere);
   }
   maybeHint();
+  if (!WX.at || km(WX.at, me) > 8) loadWeather();
   // directions were opened before the GPS answered: route now that we know where you are
   if (view === "route" && dest && !from && !R.busy && !R.fast.walk && !R.fast.bike && !R.fast.car && !R.transit) routeNow(true);
 });
@@ -424,15 +424,17 @@ function renderWhere() {
 }
 // Long-press has no visible signifier on a map, so we teach it once.
 function maybeHint() {
-  if (store.get("hint", false) || dest || view) return;
-  $("#hintBuddy").innerHTML = buddy("happy");
-  $("#hintText").textContent = t("hintPress"); // the splash already said hello
+  if (store.get("hint", false) || dest || view || !store.get("onboarded", false)) return;
+  $("#hintBuddy").innerHTML = statusIcon("happy");
+  $("#hintText").textContent = t("hintPress");
   $("#hint").hidden = false;
 }
 $("#hintOk").onclick = () => { $("#hint").hidden = true; store.set("hint", true); };
 
 // ---------- Nearby categories (real places from OpenStreetMap) ----------
 const CATS = {
+  // places foreigners and exchange students tend to like (see ffInfo): food, cafés, bars, sights and big shops
+  fav: { icon: "star", color: "#7c3aed", radius: 1600, q: 'nwr["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|food_court)$"]["name"];nwr["tourism"~"^(museum|attraction|gallery|viewpoint)$"]["name"];nwr["shop"~"^(mall|department_store|cosmetics)$"]["name"]' },
   food: { icon: "food", color: "#ea580c", q: 'nwr["amenity"~"^(restaurant|fast_food|food_court)$"]["name"]' },
   cafe: { icon: "cafe", color: "#92400e", q: 'nwr["amenity"="cafe"]["name"]' },
   metro: { icon: "transit", color: "#2563eb", q: 'nwr["railway"~"^(station|halt)$"]["name"];nwr["public_transport"="station"]["name"]' },
@@ -443,9 +445,16 @@ const CATS = {
 const NEAR = { cat: null, items: [], busy: false, error: false };
 function renderCats() {
   const n = savedList().length;
-  $("#cats").innerHTML = `<button class="cat saved-cat" type="button" id="savedCat" aria-pressed="${view === "saved"}" style="--c:#e11d48">${ICON.heartOn}${t("saved")}${n ? `<span class="count">${n}</span>` : ""}</button>` + Object.entries(CATS).map(([k, c]) => `<button class="cat" type="button" data-c="${k}" aria-pressed="${NEAR.cat === k}" style="--c:${c.color}">${ICON[c.icon]}${t("cat_" + k)}</button>`).join("");
+  const home = homePlace();
+  $("#cats").innerHTML = wxChip() +
+    `<button class="cat ask-cat" type="button" id="askCat" aria-pressed="${view === "ask" || view === "hello"}">${ICON.sparkle}${t("ai_chip")}</button>` +
+    (home ? `<button class="cat" type="button" id="homeCat" style="--c:#7c3aed">${ICON.home}${t("cat_home")}</button>` : "") +
+    `<button class="cat saved-cat" type="button" id="savedCat" aria-pressed="${view === "saved"}" style="--c:#e11d48">${ICON.heartOn}${t("saved")}${n ? `<span class="count">${n}</span>` : ""}</button>` + Object.entries(CATS).map(([k, c]) => `<button class="cat" type="button" data-c="${k}" aria-pressed="${NEAR.cat === k}" style="--c:${c.color}">${ICON[c.icon]}${t("cat_" + k)}</button>`).join("");
   document.querySelectorAll(".cat[data-c]").forEach(b => b.onclick = () => nearby(b.dataset.c));
   $("#savedCat").onclick = openSaved;
+  $("#askCat").onclick = () => view === "ask" ? closeAll() : openAsk();
+  const wc = $("#wxCat"); if (wc) wc.onclick = () => view === "weather" ? closeAll() : openWeather();
+  const hc = $("#homeCat"); if (hc) hc.onclick = goHome;
 }
 queueMicrotask(renderCats); // after the whole module has run (it reads state declared further down)
 async function nearby(cat) {
@@ -458,16 +467,19 @@ async function nearby(cat) {
   const at = me && (!c || km(me, c) < 2) ? me : (c || me);
   if (!at) { NEAR.busy = false; locState = "off"; renderWhere(); rerenderSheet(); return; }
   try {
-    const around = `(around:1200,${at.lat},${at.lon})`;
+    const around = `(around:${CATS[cat].radius || 1200},${at.lat},${at.lon})`;
     const parts = CATS[cat].q.split(";").map(s => s + around + ";").join("");
-    const els = await overpassQuery(`[out:json][timeout:20];(${parts});out center tags 80;`);
+    const els = await overpassQuery(`[out:json][timeout:20];(${parts});out center tags ${cat === "fav" ? 300 : 120};`);
     if (NEAR.cat !== cat) return;
     const seen = new Set();
     NEAR.items = els.map(e => ({ lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags || {}, osm: e.type[0].toUpperCase() + e.id }))
       .filter(p => p.lat != null)
       .map(p => ({ ...p, name: p.tags[`name:${lang}`] || p.tags.name || p.tags.operator || p.tags.brand || t("cat_" + cat), sub: [p.tags["addr:street"], p.tags["addr:housenumber"]].filter(Boolean).join(" ") }))
       .filter(p => { const k = p.name + Math.round(p.lat * 2000) + Math.round(p.lon * 2000); if (seen.has(k)) return false; seen.add(k); return true; })
-      .sort((a, b) => km(at, a) - km(at, b)).slice(0, 25);
+      .map(p => ({ ...p, ff: ffInfo(p.tags, p) }))
+      .filter(p => cat !== "fav" || p.ff.s >= 3)
+      // places foreigners tend to like come first: each point of the score is worth about 150 m of extra walking
+      .sort((a, b) => (km(at, a) - a.ff.s * .15) - (km(at, b) - b.ff.s * .15)).slice(0, 25);
   } catch { NEAR.error = true; }
   NEAR.busy = false; rerenderSheet(); drawNearby();
   if (NEAR.items.length) {
@@ -477,8 +489,9 @@ async function nearby(cat) {
 }
 function drawNearby() {
   if (!map.getSource("wv-near")) return;
-  const color = NEAR.cat ? CATS[NEAR.cat].color : "#2563eb";
-  map.getSource("wv-near").setData({ type: "FeatureCollection", features: view === "nearby" ? NEAR.items.map((p, i) => ({ type: "Feature", geometry: { type: "Point", coordinates: [p.lon, p.lat] }, properties: { i, name: p.name, color } })) : [] });
+  const color = view === "ask" ? AI_COLOR[ASK.plan?.cat] || "#7c3aed" : NEAR.cat ? CATS[NEAR.cat].color : "#2563eb";
+  const list = view === "ask" ? ASK.items : view === "nearby" ? NEAR.items : [];
+  map.getSource("wv-near").setData({ type: "FeatureCollection", features: list.map((p, i) => ({ type: "Feature", geometry: { type: "Point", coordinates: [p.lon, p.lat] }, properties: { i, name: p.name, color } })) });
 }
 
 // ---------- Search ----------
@@ -691,6 +704,9 @@ function rerenderSheet() {
   if (NAV.active) return;
   if (view === "nearby") return renderNearby();
   if (view === "saved") return renderSaved();
+  if (view === "ask") return renderAsk();
+  if (view === "weather") return renderWeather();
+  if (view === "hello") return renderHello();
   if (!dest) { sheet.hidden = true; return; }
   sheet.hidden = false;
   if (view === "place") return renderPlace();
@@ -701,9 +717,9 @@ function renderNearby() {
   const c = CATS[NEAR.cat];
   let body;
   if (NEAR.busy) body = `<p class="note">${t("searching")}</p><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
-  else if (NEAR.error) body = `<div class="insight err">${buddy("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
-  else if (!NEAR.items.length) body = `<div class="insight">${buddy("think")}<div>${t("nearbyNone")}</div></div>`;
-  else body = `<div class="places" role="list">${NEAR.items.map((p, i) => `<button class="sug" type="button" role="listitem" data-i="${i}"><span class="ic" style="color:${c.color}">${ICON[c.icon]}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([p.sub, p.tags.wheelchair === "yes" ? "♿ " + t("wc_yes") : ""].filter(Boolean).join(" · "))}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button>`).join("")}</div>`;
+  else if (NEAR.error) body = `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
+  else if (!NEAR.items.length) body = `<div class="insight">${statusIcon("think")}<div>${t("nearbyNone")}</div></div>`;
+  else body = `<div class="places" role="list">${NEAR.items.map((p, i) => `<button class="sug" type="button" role="listitem" data-i="${i}"><span class="ic" style="color:${c.color}">${ICON[c.icon]}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([p.sub, p.tags.wheelchair === "yes" ? "♿ " + t("wc_yes") : ""].filter(Boolean).join(" · "))}</span>${whyHtml(p.ff?.why)}</span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button>`).join("")}</div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(t("nearbyTitle", { cat: t("cat_" + NEAR.cat) }))}</h2>`) + body + `<p class="foot">${ICON.info}OpenStreetMap</p>`;
   sheetBody.querySelectorAll(".places .sug").forEach(b => b.onclick = () => choose(NEAR.items[+b.dataset.i]));
   const r = $("#retryNear"); if (r) r.onclick = () => nearby(NEAR.cat);
@@ -748,7 +764,7 @@ function renderSaved() {
   const list = savedList();
   const body = list.length
     ? `<div class="places" role="list">${list.map((p, i) => `<div class="saved-row" role="listitem"><button class="sug" type="button" data-i="${i}"><span class="ic" style="color:#e11d48">${ICON.heartOn}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc(p.sub)}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button><button class="btn icon rm" type="button" data-i="${i}" aria-label="${esc(t("removeSaved") + ": " + p.name)}" title="${esc(t("removeSaved"))}">${ICON.trash}</button></div>`).join("")}</div>`
-    : `<div class="insight">${buddy("happy")}<div>${t("savedEmpty")}</div></div>`;
+    : `<div class="insight">${statusIcon("happy")}<div>${t("savedEmpty")}</div></div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${t("savedTitle")}</h2>${list.length ? `<p class="sub2">${t(list.length === 1 ? "savedOne" : "savedCount", { n: list.length })}</p>` : ""}`) + body + `<p class="foot">${ICON.shield}${t("savedPrivate")}</p>`;
   sheetBody.querySelectorAll(".saved-row .sug").forEach(b => b.onclick = () => choose(list[+b.dataset.i]));
   sheetBody.querySelectorAll(".saved-row .rm").forEach(b => b.onclick = () => { toggleSave(list[+b.dataset.i]); renderSaved(); drawSaved(); });
@@ -758,10 +774,12 @@ function renderSaved() {
 function renderPlace() {
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(dest.name)}</h2>${dest.sub ? `<p class="sub2">${esc(dest.sub)}</p>` : ""}`) +
     `${me ? `<span class="kicker">${fmtDist(km(me, dest))} · ${t("from").toLowerCase()}</span>` : ""}
+    ${dest.tags ? whyHtml(ffInfo(dest.tags, dest).why) : ""}
     <div class="actions"><button class="btn go" id="dirBtn" type="button">${ICON.go}${t("directions")}</button>${saveBtn()}</div>
-    ${factsHtml(dest.tags)}`;
+    ${factsHtml(dest.tags)}${placeExtras()}`;
   $("#dirBtn").onclick = startDirections;
   $("#saveBtn").onclick = () => { toggleSave(dest); rerenderSheet(); };
+  bindPlaceExtras();
   bindClose();
 }
 // a heart that says what it does: "Guardar" before, "Guardado" (filled) after
@@ -791,10 +809,10 @@ function renderRoute() {
   else {
     const c = current();
     let hero = "", body = "";
-    if (!origin()) body = `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
-    else if (R.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
-    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${buddy("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
-    else if (R.fast[R.mode]?.error) body = `<div class="insight err">${buddy("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
+    if (!origin()) body = `<div class="insight">${statusIcon("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
+    else if (R.busy) body = `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
+    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${statusIcon("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
+    else if (R.fast[R.mode]?.error) body = `<div class="insight err">${statusIcon("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
       hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(c.time)}</span>${usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : ""}</div><span class="eta-sub">${t("arriveAt", { t: etaClock(c.time) })} · ${fmtDist(c.length)}</span></div>`;
       const lines = [];
@@ -807,6 +825,7 @@ function renderRoute() {
         if (top.length) lines.push(`<span class="poi-names">${top.map(esc).join(" · ")}</span>`);
       }
       if (R.note) lines.push(esc(R.note));
+      const rw = routeWx(); if (rw) lines.push(esc(rw));
       if (c.offRoad) lines.push(esc(t("farFromRoad")));
       if (c.backup) lines.push(esc(t("fallbackRoute")));
       if (lines.length) body = `<div class="insight"><span class="dot"></span><div>${lines.join("<br>")}</div></div>`;
@@ -817,7 +836,7 @@ function renderRoute() {
       <div class="prefs" role="group" aria-label="${esc(t("howToGo"))}">${PREFS.map(p => `<button class="pref" type="button" data-p="${p}" aria-pressed="${active.includes(p)}" style="--c1:${VIBES[p][0]};--c2:${VIBES[p][1]}"><i>${ICON[p]}</i>${t(p)}${ICON.check}</button>`).join("")}</div>
       ${active.includes("tourist") ? `<div class="levels"><p class="q sm">${t("qTourLevel")}</p><div class="lvl-row" role="radiogroup" aria-label="${esc(t("qTourLevel"))}">${[1, 2, 3].map(l => `<button class="lvl" type="button" role="radio" data-l="${l}" aria-checked="${tourLevel === l}"><span class="lvl-n">${"●".repeat(l)}${"○".repeat(3 - l)}</span><b>${t("lvl" + l)}</b><small>${t("lvl" + l + "d")}</small>${R.levelCounts ? `<span class="lvl-c">${t("lvlCount", { n: R.levelCounts[l] })}</span>` : ""}</button>`).join("")}</div></div>` : ""}
       <form class="ask" id="askForm"><input id="ask" maxlength="60" placeholder="${esc(t("askPlaceholder"))}" aria-label="${esc(t("howToGo"))}" value="${esc(R.askText)}"><button type="submit">OK</button></form>
-      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
+      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${statusIcon(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
     const ready = c?.coords && !R.busy;
     const atStart = !from || (me && km(me, from) < .3); // turn-by-turn only makes sense from where you are
@@ -1148,12 +1167,12 @@ function lineBadge(l) {
 }
 const mins = s => Math.max(1, Math.round(s / 60));
 function transitBody() {
-  if (!origin()) return `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
-  if (R.busy) return `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
+  if (!origin()) return `<div class="insight">${statusIcon("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
+  if (R.busy) return `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
   const T0 = R.transit || { items: [] }, items = T0.items;
   if (!items.length) {
-    if (T0.walkBetter) return `<div class="insight">${buddy("happy")}<div>${t("transitWalk")}<br><button class="btn" id="goWalk" type="button">${t("goWalk")}</button></div></div>`;
-    return `<div class="insight err">${buddy("sad")}<div>${t(T0.failed ? (T0.offline ? "offline" : "transitDown") : "noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
+    if (T0.walkBetter) return `<div class="insight">${statusIcon("happy")}<div>${t("transitWalk")}<br><button class="btn" id="goWalk" type="button">${t("goWalk")}</button></div></div>`;
+    return `<div class="insight err">${statusIcon("sad")}<div>${t(T0.failed ? (T0.offline ? "offline" : "transitDown") : "noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
   }
   const it = items[R.itin] || items[0];
   const tr = it.transfers === 0 ? t("direct") : it.transfers === 1 ? t("oneTransfer") : t("transfers", { n: it.transfers });
@@ -1306,7 +1325,7 @@ function renderNav() {
   navtop.innerHTML = NAV.rerouting
     ? `<div class="navcard"><span class="arrow">${ICON.round}</span><div><div class="ins">${t("rerouting")}</div></div></div>`
     : arrived
-      ? `<div class="navcard arrived">${buddy("party")}<div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div><div class="cheer">${t("cheer")}</div></div></div>`
+      ? `<div class="navcard arrived">${statusIcon("party")}<div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div><div class="cheer">${t("cheer")}</div></div></div>`
       : `<div class="navcard"><span class="arrow">${manIcon(next?.type)}</span><div><div class="dist">${fmtDist(dist)}</div><div class="ins">${esc(next?.instruction || "")}</div></div></div>
          ${after ? `<div class="navnext">${t("then")} ${manIcon(after.type)} <span>${esc(after.instruction)}</span></div>` : ""}`;
   const gps = Date.now() - NAV.lastFix > 15000 ? `<div class="gps bad">${t("gpsLost")}</div>` : NAV.acc > 60 ? `<div class="gps">${t("gpsWeak")}</div>` : "";
@@ -1447,4 +1466,439 @@ async function personalized(O, D, mode, prefs, fast) {
   for (const k in names) names[k] = names[k].sort((a, b) => b.weight - a.weight).slice(0, 3).map(p => p.name);
   route.names = names;
   return { route, pois: passed.filter(p => p.name), count, levelCounts }; // the map shows exactly the places we count
+}
+
+// ---------- Exchange students: weather, places foreigners like, and the place finder ----------
+// "Ask for a plan" understands what you type (or say) right here in the app, in any app language: the kind of place, the area,
+// how far, how you want to go, budget, diet and the weather. It never makes places up: every result is a real
+// OpenStreetMap place, ranked so the ones foreigners tend to like (English name, vegan/halal, cards, foreigner areas) come first.
+const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
+const AIR_QUALITY = "https://air-quality-api.open-meteo.com/v1/air-quality";
+const SEOUL = { lat: 37.5665, lon: 126.978 };
+const WX = { data: null, at: null, time: 0, busy: false, error: false };
+const WET = ["rain", "drizzle", "snow", "storm"];
+function wxKind(code) {
+  if (code == null) return "cloudy";
+  if (code === 0) return "clear";
+  if (code <= 2) return "partly";
+  if (code === 3) return "cloudy";
+  if (code === 45 || code === 48) return "fog";
+  if (code >= 51 && code <= 57) return "drizzle";
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return "rain";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "snow";
+  if (code >= 95) return "storm";
+  return "cloudy";
+}
+const wxIcon = (kind, day = true) => ICON[{ clear: day ? "sun" : "moon", partly: "partly", cloudy: "cloud", fog: "cloud", drizzle: "rain", rain: "rain", snow: "snow", storm: "storm" }[kind] || "cloud"];
+// Korean PM2.5 bands (µg/m³): 0-15 good, 16-35 moderate, 36-75 bad, 76+ very bad
+const airLevel = pm => pm == null ? null : pm <= 15 ? "good" : pm <= 35 ? "ok" : pm <= 75 ? "bad" : "vbad";
+// one word for what the weather means for going out
+function wxMood() {
+  const d = WX.data; if (!d) return null;
+  if (WET.includes(d.kind) || d.rainSoon) return "rain";
+  if (d.feels >= 30) return "hot";
+  if (d.feels <= 0) return "cold";
+  if (d.pm25 > 35) return "dust";
+  return "nice";
+}
+function wxPoint() { return me || (map.getZoom() > 8 ? { lat: map.getCenter().lat, lon: map.getCenter().lng } : SEOUL); }
+async function loadWeather(force = false) {
+  const p = wxPoint();
+  if (WX.busy || !navigator.onLine) return;
+  if (!force && WX.data && WX.at && km(WX.at, p) < 8 && Date.now() - WX.time < 15 * 60e3) return;
+  WX.busy = true;
+  try {
+    const q = `latitude=${p.lat.toFixed(3)}&longitude=${p.lon.toFixed(3)}&timezone=auto`;
+    const [f, a] = await Promise.all([
+      getJSON(`${OPEN_METEO}?${q}&current=temperature_2m,apparent_temperature,precipitation,weather_code,is_day&hourly=temperature_2m,precipitation_probability,weather_code&forecast_hours=6`, { timeout: 9000 }),
+      getJSON(`${AIR_QUALITY}?${q}&current=pm2_5,pm10`, { timeout: 9000, retries: 0 }).catch(() => null),
+    ]);
+    const c = f.current || {}, h = f.hourly || {};
+    const hours = (h.time || []).slice(0, 6).map((tm, i) => ({ hour: String(tm).slice(11, 16), temp: Math.round(h.temperature_2m?.[i]), prob: h.precipitation_probability?.[i] ?? 0, kind: wxKind(h.weather_code?.[i]) }));
+    if (!isFinite(c.temperature_2m)) throw new Error("no weather");
+    WX.data = {
+      temp: Math.round(c.temperature_2m), feels: Math.round(c.apparent_temperature ?? c.temperature_2m), kind: wxKind(c.weather_code), day: c.is_day !== 0,
+      hours, rainSoon: hours.slice(0, 3).some(x => x.prob >= 50 || WET.includes(x.kind)),
+      pm25: isFinite(a?.current?.pm2_5) ? Math.round(a.current.pm2_5) : null,
+    };
+    WX.at = p; WX.time = Date.now(); WX.error = false;
+  } catch { WX.error = !WX.data; }
+  WX.busy = false;
+  renderCats();
+  if (view === "weather" || (view === "ask" && !ASK.busy)) rerenderSheet();
+}
+setInterval(() => { if (document.visibilityState === "visible") loadWeather(); }, 10 * 60e3);
+map.on("moveend", () => { if (!me && !NAV.active) loadWeather(); });
+
+function wxChip() {
+  const d = WX.data;
+  if (!d) return WX.error ? "" : `<button class="cat wx-cat" type="button" id="wxCat" aria-label="${esc(t("wx_label"))}">${ICON.cloud}<b>…</b></button>`;
+  const extra = d.rainSoon && !WET.includes(d.kind) ? `<span class="wx-flag">${ICON.umbrella}</span>` : d.pm25 > 35 ? `<span class="wx-flag dust">PM</span>` : "";
+  return `<button class="cat wx-cat ${wxMood()}" type="button" id="wxCat" aria-pressed="${view === "weather"}" aria-label="${esc(`${t("wx_label")}: ${d.temp}°, ${t("wx_" + d.kind)}`)}">${wxIcon(d.kind, d.day)}<b>${d.temp}°</b>${extra}</button>`;
+}
+function openWeather() {
+  if (NAV.active) return;
+  closeAll(); $("#hint").hidden = true;
+  view = "weather"; renderCats(); setSnap(1); rerenderSheet();
+  loadWeather();
+}
+function renderWeather() {
+  sheet.hidden = false;
+  const d = WX.data;
+  let body;
+  if (!d) body = WX.error
+    ? `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "wx_err" : "offline")}<br><button class="btn" id="wxRetry" type="button">${t("retry")}</button></div></div>`
+    : `<div class="skel"></div><div class="skel"></div>`;
+  else {
+    const air = airLevel(d.pm25), mood = wxMood();
+    body = `<div class="wx-hero"><span class="wx-big ${mood}">${wxIcon(d.kind, d.day)}</span><div><span class="eta">${d.temp}°</span><span class="eta-sub">${t("wx_" + d.kind)} · ${t("wx_feels", { n: d.feels })}</span></div></div>
+      ${d.hours.length ? `<div><p class="q">${t("wx_next")}</p><div class="wx-hours">${d.hours.map(x => `<div class="wx-h"><small>${esc(x.hour)}</small>${wxIcon(x.kind)}<b>${isFinite(x.temp) ? x.temp + "°" : "–"}</b><span class="wx-p${x.prob >= 50 ? " hi" : ""}">${ICON.umbrella}${x.prob}%</span></div>`).join("")}</div></div>` : ""}
+      ${air ? `<div class="wx-air"><span>${t("wx_air")}</span><b class="air ${air}">${t("air_" + air)} · ${d.pm25} µg/m³</b></div>` : ""}
+      <div class="insight">${statusIcon(mood === "nice" ? "happy" : "think")}<div>${t("tip_" + mood)}</div></div>
+      <div class="actions"><button class="btn go" id="wxPlan" type="button">${ICON.sparkle}${t("wx_plan")}</button></div>`;
+  }
+  const where = whereAddr?.sub || "";
+  sheetBody.innerHTML = headRow(`<h2 class="title">${t("wx_title")}</h2>${where ? `<p class="sub2">${esc(where)}</p>` : ""}`) + body + `<p class="foot">${ICON.info}Open-Meteo</p>`;
+  const r = $("#wxRetry"); if (r) r.onclick = () => { WX.error = false; rerenderSheet(); loadWeather(true); };
+  const pl = $("#wxPlan"); if (pl) pl.onclick = () => openAsk("", { surprise: true });
+  bindClose();
+}
+// a line under the route when the weather matters for walking or biking
+function routeWx() {
+  const m = wxMood(), d = WX.data;
+  if (!m || R.mode === "car" || R.mode === "transit") return "";
+  if (m === "rain") return t("rwx_rain");
+  if (m === "hot") return R.prefs.includes("shade") ? "" : t("rwx_hot", { n: d.feels });
+  if (m === "cold") return t("rwx_cold", { n: d.feels });
+  if (m === "dust") return t("rwx_dust");
+  return "";
+}
+
+// ---------- What makes a place foreigner-friendly (only what OpenStreetMap actually says about it) ----------
+function areaOf(p) { return AREAS.find(a => km(a, p) <= a.r) || null; }
+const areaName = a => a.n?.[lang] || a.n?.en || a.name || "";
+const yes = v => /^(yes|only)$/.test(v || "");
+function ffInfo(tg = {}, p) {
+  const why = []; let s = 0;
+  const name = tg.name || "";
+  if (tg["name:en"] || (/^[\x20-\x7E]+$/.test(name) && /[a-z]/i.test(name))) { s += 3; why.push("en"); }
+  if (yes(tg["diet:vegan"])) { s += 2; why.push("vegan"); }
+  else if (yes(tg["diet:vegetarian"])) { s += 1.5; why.push("veg"); }
+  if (yes(tg["diet:halal"])) { s += 2; why.push("halal"); }
+  if (yes(tg["payment:credit_cards"]) || yes(tg["payment:visa"]) || yes(tg["payment:mastercard"])) { s += 1; why.push("card"); }
+  if (/international|western|american|italian|mexican|indian|thai|vietnamese|turkish|middle_eastern|pizza|burger|french|spanish|greek|brunch/.test(tg.cuisine || "")) { s += 1; why.push("intl"); }
+  if (p && areaOf(p)) { s += 2; why.push("area"); }
+  if (tg.wikidata || tg.wikipedia) { s += 2; why.push("famous"); }
+  if (tg.opening_hours) s += .5;
+  if (tg.website || tg["contact:website"]) s += .5;
+  return { s, why };
+}
+const whyHtml = why => why?.length ? `<span class="whys">${why.slice(0, 3).map(w => `<i class="why w-${w}">${esc(t("why_" + w))}</i>`).join("")}</span>` : "";
+
+// ---------- Your home (your dorm or flat), likes and ratings: all kept on this phone ----------
+function homePlace() { const h = store.get("home", null); return h && isFinite(h.lat) && isFinite(h.lon) ? h : null; }
+function goHome() {
+  const h = homePlace(); if (!h || NAV.active) return;
+  choose({ ...h, name: h.name || t("cat_home") });
+  startDirections();
+}
+const rateKey = p => p.osm || `${(+p.lat).toFixed(4)},${(+p.lon).toFixed(4)}`;
+function catOfTags(tg = {}) {
+  const a = tg.amenity || "", s = tg.shop || "", tr = tg.tourism || "", l = tg.leisure || "";
+  if (a === "cafe") return "cafe";
+  if (/^(restaurant|fast_food|food_court)$/.test(a)) return "food";
+  if (/^(bar|pub|biergarten|nightclub)$/.test(a)) return "bar";
+  if (a === "karaoke_box") return "karaoke";
+  if (a === "ice_cream" || /^(bakery|pastry|confectionery)$/.test(s)) return "dessert";
+  if (/^(park|garden|nature_reserve)$/.test(l)) return "park";
+  if (/^(museum|gallery|attraction)$/.test(tr) || tg.historic) return "culture";
+  if (tr === "viewpoint") return "photo";
+  if (/^(supermarket|convenience)$/.test(s)) return "market";
+  if (s) return "shopping";
+  return null;
+}
+function placeExtras() {
+  if (!dest || dest.isMe) return "";
+  const h = homePlace(), isHome = !!h && km(h, dest) < .03;
+  const rated = store.get("rated", {})[rateKey(dest)]?.v || 0;
+  const rate = dest.name === t("pinned") || isHome ? "" : `<div class="rate"><span>${t("rate_q")}</span><button class="chip" type="button" data-r="1" aria-pressed="${rated === 1}">${ICON.thumbUp}${t("rate_up")}</button><button class="chip" type="button" data-r="-1" aria-pressed="${rated === -1}">${ICON.thumbDown}${t("rate_down")}</button></div>`;
+  return `<div class="place-extra">${rate}<button class="chip home-chip" type="button" id="homeBtn" aria-pressed="${isHome}">${ICON.home}${t(isHome ? "home_on" : "home_set")}</button></div>`;
+}
+function bindPlaceExtras() {
+  const hb = $("#homeBtn");
+  if (hb) hb.onclick = () => {
+    const h = homePlace();
+    if (h && km(h, dest) < .03) store.set("home", null);
+    else { store.set("home", { lat: dest.lat, lon: dest.lon, name: dest.name, sub: dest.sub || "", osm: dest.osm || null }); toast(t("home_toast")); }
+    renderCats(); rerenderSheet();
+  };
+  sheetBody.querySelectorAll(".rate .chip").forEach(b => b.onclick = () => {
+    const all = store.get("rated", {}), k = rateKey(dest), v = +b.dataset.r;
+    if (all[k]?.v === v) delete all[k];
+    else { all[k] = { v, cat: dest.cat || catOfTags(dest.tags), at: Date.now() }; toast(t("rate_thanks")); }
+    store.set("rated", all); rerenderSheet();
+  });
+}
+// what you like: the chips you picked count most, places you rated nudge their kind up or down
+function tasteWeights() {
+  const w = {};
+  for (const k of store.get("tastes", [])) w[k] = (w[k] || 0) + 2;
+  for (const r of Object.values(store.get("rated", {}))) if (r?.cat) w[r.cat] = (w[r.cat] || 0) + (r.v > 0 ? 1 : -.5);
+  return w;
+}
+function tasteChips() {
+  const on = store.get("tastes", []);
+  return `<div class="ai-chips">${TASTES.map(k => `<button type="button" class="chip" data-taste="${k}" aria-pressed="${on.includes(k)}">${ICON[AI_ICON[k]]}${t("aic_" + k)}${ICON.check}</button>`).join("")}</div>`;
+}
+function bindTasteChips() {
+  sheetBody.querySelectorAll("[data-taste]").forEach(b => b.onclick = () => {
+    const k = b.dataset.taste, on = new Set(store.get("tastes", []));
+    on.has(k) ? on.delete(k) : on.add(k);
+    store.set("tastes", [...on]); b.setAttribute("aria-pressed", on.has(k));
+  });
+}
+// First open: a welcome that asks what you like, once
+function maybeHello() {
+  if (store.get("onboarded", false) || view || dest || NAV.active) return;
+  view = "hello"; renderCats(); setSnap(1); rerenderSheet();
+}
+function renderHello() {
+  sheet.hidden = false;
+  sheetBody.innerHTML = `<div class="hello">${statusIcon("wave")}<div><h2 class="title">${t("onb_title")}</h2><p class="sub2">${t("onb_text")}</p></div></div>
+    ${tasteChips()}
+    <div class="actions"><button class="btn" id="onbSkip" type="button">${t("onb_skip")}</button><button class="btn go" id="onbDone" type="button">${ICON.check}${t("onb_done")}</button></div>`;
+  bindTasteChips();
+  const end = () => { store.set("onboarded", true); view = null; sheet.hidden = true; renderCats(); maybeHint(); };
+  $("#onbSkip").onclick = end;
+  $("#onbDone").onclick = end;
+}
+
+// ---------- Ask for a plan: understands what you feel like and finds real places ----------
+const AI_ICON = { cafe: "cafe", dessert: "icecream", food: "food", bar: "beer", karaoke: "mic", park: "park", culture: "museum", shopping: "bag", study: "book", photo: "tourist", market: "bag", pharmacy: "pharmacy", atm: "atm" };
+const AI_COLOR = { cafe: "#92400e", dessert: "#db2777", food: "#ea580c", bar: "#7c3aed", karaoke: "#c026d3", park: "#16a34a", culture: "#0e7490", shopping: "#e11d48", study: "#2563eb", photo: "#0891b2", market: "#475569", pharmacy: "#059669", atm: "#475569" };
+const INDOOR = new Set(["cafe", "dessert", "food", "bar", "karaoke", "culture", "shopping", "study", "market", "pharmacy", "atm"]);
+const AI_Q = {
+  cafe: ['nwr["amenity"="cafe"]["name"]'],
+  dessert: ['nwr["amenity"="ice_cream"]["name"]', 'nwr["shop"~"^(bakery|pastry|confectionery)$"]["name"]', 'nwr["amenity"="cafe"]["cuisine"~"dessert|cake|bingsu|waffle|donut|bakery"]["name"]'],
+  food: ['nwr["amenity"~"^(restaurant|fast_food|food_court)$"]["name"]'],
+  bar: ['nwr["amenity"~"^(bar|pub|biergarten|nightclub)$"]["name"]'],
+  karaoke: ['nwr["amenity"="karaoke_box"]'],
+  park: ['nwr["leisure"~"^(park|garden|nature_reserve)$"]["name"]'],
+  culture: ['nwr["tourism"~"^(museum|gallery)$"]["name"]', 'nwr["tourism"="attraction"]["name"]["wikidata"]', 'nwr["historic"~"^(palace|castle|monument|temple)$"]["name"]', 'nwr["amenity"~"^(theatre|arts_centre)$"]["name"]'],
+  shopping: ['nwr["shop"~"^(mall|department_store|clothes|cosmetics|beauty|shoes|gift|books|variety_store)$"]["name"]', 'nwr["amenity"="marketplace"]["name"]'],
+  study: ['nwr["amenity"="library"]["name"]', 'nwr["amenity"="cafe"]["name"]["internet_access"~"wlan|yes|wifi"]', 'nwr["amenity"="cafe"]["name"]'],
+  photo: ['nwr["tourism"="viewpoint"]', 'nwr["tourism"="attraction"]["name"]', 'nwr["leisure"="park"]["name"]["wikidata"]'],
+  market: ['nwr["shop"~"^(supermarket|convenience)$"]'],
+  pharmacy: ['nwr["amenity"="pharmacy"]'],
+  atm: ['nwr["amenity"="atm"]', 'nwr["amenity"="bank"]["atm"="yes"]'],
+};
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const ASK = { text: "", plan: null, items: [], notes: [], busy: false, error: false, seq: 0, listening: false };
+
+// where a word starts in the text (-1 if absent). Latin words match at a word start; "word$" must be the whole word.
+function said(n, w) {
+  const whole = w.endsWith("$"), word = norm(whole ? w.slice(0, -1) : w);
+  if (/^[a-z0-9 .'-]+$/.test(word)) {
+    const m = new RegExp(`(^|[^a-z0-9])${word.replace(/[.'-]/g, c => "\\" + c)}${whole ? "(?![a-z0-9])" : ""}`).exec(n);
+    return m ? m.index + m[1].length : -1;
+  }
+  return n.indexOf(word);
+}
+function saidAny(n, words) { let best = -1, hit = null; for (const w of words) { const i = said(n, w); if (i >= 0 && (best < 0 || i < best)) { best = i; hit = w.replace(/\$$/, ""); } } return { at: best, word: hit }; }
+
+// Turn what you wrote into a plan: what kind of place, where, how far, how you go and anything special
+async function understand(text, opts = {}) {
+  const n = norm(text), W = AI_WORDS;
+  const plan = { cat: null, cuisine: null, cuisineWord: "", diet: null, where: null, radius: 1.2, mode: null, cheap: false, quiet: false, english: false, surprise: !!opts.surprise };
+  let first = Infinity;
+  for (const [k, ws] of Object.entries(W.cats)) { const { at } = saidAny(n, ws); if (at >= 0 && at < first) { first = at; plan.cat = k; } }
+  for (const [k, c] of Object.entries(W.cuisine)) { const { at, word } = saidAny(n, c.words); if (at >= 0) { plan.cuisine = k; plan.cuisineWord = word; break; } }
+  for (const [k, ws] of Object.entries(W.diet)) if (saidAny(n, ws).at >= 0) { plan.diet = k; break; }
+  plan.cheap = saidAny(n, W.cheap).at >= 0;
+  plan.quiet = saidAny(n, W.quiet).at >= 0;
+  plan.english = saidAny(n, W.english).at >= 0;
+  for (const m of ["walk", "transit", "bike", "car"]) if (saidAny(n, W[m]).at >= 0) { plan.mode = m; break; }
+  if ((plan.cuisine || plan.diet) && !["food", "cafe", "dessert", "bar"].includes(plan.cat)) plan.cat = "food";
+  if (!plan.cat && plan.cheap) plan.cat = "food";
+  if (!plan.cat && plan.quiet) plan.cat = "cafe";
+  if (!plan.cat && saidAny(n, W.rain).at >= 0) plan.surprise = true;
+
+  // where: a student area, your home, a place you named, or around you
+  const area = opts.area || AREAS.find(a => saidAny(n, a.words).at >= 0);
+  const home = homePlace();
+  if (area) plan.where = { kind: "area", name: areaName(area), lat: area.lat, lon: area.lon, r: area.r };
+  else if (home && saidAny(n, W.home).at >= 0) plan.where = { kind: "home", lat: home.lat, lon: home.lon };
+  else {
+    const named = namedPlace(text);
+    if (named) {
+      try {
+        const b = me || SEOUL;
+        const [hit] = await search(named);
+        if (hit && km(hit, b) < 80) plan.where = { kind: "area", name: hit.name, lat: hit.lat, lon: hit.lon };
+        else plan.missed = named;
+      } catch { plan.missed = named; }
+    }
+  }
+  if (!plan.where) { const c = biasPoint() || SEOUL; plan.where = { kind: me ? "me" : "map", lat: c.lat, lon: c.lon }; }
+  if (!plan.cat && (plan.surprise || area || plan.where.kind === "home" || plan.missed == null && plan.where.kind === "area")) { plan.cat = vagueCat(); plan.surprise = true; }
+
+  const near = saidAny(n, W.near).at >= 0, far = saidAny(n, W.far).at >= 0;
+  plan.radius = far ? 3 : near ? .8 : plan.where.r || 1.2;
+  if (["park", "culture", "photo"].includes(plan.cat) && !near) plan.radius = Math.max(plan.radius, 2.2); // sights are spread out
+  if (plan.diet && !near) plan.radius = Math.max(plan.radius, 2); // vegan and halal places are few
+  return plan;
+}
+// "near Seoul National University", "cerca de la Estación Seúl", "서울대 근처", "弘益大学附近"
+function namedPlace(text) {
+  const latin = text.match(/(?:cerca de(?:l| la)?|near|around|close to|next to|perto de|près de|pres de|à côté de|рядом с|около|возле|в районе)\s+((?:[A-ZÀ-ÝА-ЯЁ0-9][\p{L}\p{N}'’.-]*\s?){1,5})/u)
+    || text.match(/(?:^|\s)(?:in|en|em|à|в)\s+((?:[A-ZÀ-ÝА-ЯЁ][\p{L}\p{N}'’.-]*\s?){1,5})/u);
+  if (latin) return latin[1].trim().replace(/[.,!?]+$/, "");
+  const cjk = text.match(/([\p{Script=Hangul}\p{Script=Han}\p{Script=Katakana}A-Za-z0-9]{2,12})\s*(?:근처|주변|부근|附近|周边|周辺|の近く|近く)/u);
+  return cjk ? cjk[1] : null;
+}
+// nothing specific asked: pick from the weather, the time of day and what you like
+function vagueCat() {
+  const mood = wxMood(), hour = new Date().getHours();
+  let pool = ["rain", "cold", "dust"].includes(mood) ? ["cafe", "culture", "shopping", "dessert", "karaoke", "food"]
+    : mood === "hot" ? ["cafe", "dessert", "culture", "shopping"] : ["park", "photo", "food", "cafe", "culture"];
+  if (hour >= 19 || hour < 4) pool = ["food", "bar", ...pool.filter(c => !["park", "culture", "photo", "food"].includes(c))];
+  const w = tasteWeights(), liked = pool.filter(c => w[c] > 0).sort((a, b) => w[b] - w[a]);
+  const pick = liked.length ? liked : pool;
+  return pick[Math.floor(Math.random() * Math.min(pick.length, 3))];
+}
+
+async function findPlaces(plan) {
+  const around = `(around:${Math.round(plan.radius * 1000)},${plan.where.lat},${plan.where.lon})`;
+  const parts = AI_Q[plan.cat].map(s => s + around + ";").join("");
+  const els = await overpassQuery(`[out:json][timeout:20];(${parts});out center tags 300;`);
+  const rated = store.get("rated", {}), mood = wxMood();
+  const cuisineRe = plan.cuisine ? AI_WORDS.cuisine[plan.cuisine].re : null;
+  let list = els.map(e => ({ lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags || {}, osm: e.type[0].toUpperCase() + e.id, cat: plan.cat }))
+    .filter(p => p.lat != null)
+    .map(p => { const tg = p.tags, name = tg[`name:${lang}`] || (lang !== "ko" && tg["name:en"]) || tg.name || tg["name:en"] || tg.brand || t("aic_" + plan.cat); return { ...p, name, local: tg.name && tg.name !== name ? tg.name : "" }; })
+    .filter(p => rated[rateKey(p)]?.v !== -1); // never suggest a place you said is not for you
+  const notes = [];
+  if (plan.diet) {
+    const ok = p => yes(p.tags["diet:" + plan.diet]) || (plan.diet === "vegetarian" && yes(p.tags["diet:vegan"]));
+    if (list.some(ok)) list = list.filter(ok);
+    else notes.push(t("ai_noDiet", { d: t("why_" + (plan.diet === "vegetarian" ? "veg" : plan.diet)) }));
+  }
+  if (cuisineRe && list.length && !list.some(p => cuisineRe.test(p.tags.cuisine || ""))) notes.push(t("ai_noCuisine", { d: plan.cuisineWord }));
+  const from = plan.where;
+  const scored = list.map(p => {
+    const f = ffInfo(p.tags, p), why = [...f.why];
+    let s = f.s;
+    if (cuisineRe && cuisineRe.test(p.tags.cuisine || "")) { s += 5; why.unshift("match"); }
+    if (plan.cheap && /^(fast_food|food_court)$/.test(p.tags.amenity || "")) s += 2;
+    if (plan.quiet && /^(fast_food|nightclub|pub)$/.test(p.tags.amenity || "")) s -= 2;
+    if (plan.english && !f.why.includes("en")) s -= 3;
+    if (plan.cat === "study" && p.tags.amenity === "library") s += 2;
+    if (rated[rateKey(p)]?.v === 1) { s += 3; why.unshift("liked"); }
+    if (INDOOR.has(plan.cat) && ["rain", "cold", "hot", "dust"].includes(mood)) why.push("indoor");
+    s -= km(from, p) / plan.radius * 3; // closer is better, but a great place a bit further still wins
+    return { ...p, score: s, why };
+  }).sort((a, b) => b.score - a.score);
+  // one entry per place (the same café often comes as a building and as a point)
+  const out = [];
+  for (const p of scored) { if (out.some(q => norm(q.name) === norm(p.name) && km(p, q) < .3)) continue; out.push(p); if (out.length >= 6) break; }
+  return { items: out, notes };
+}
+
+function openAsk(text, opts) {
+  if (NAV.active) return;
+  closeAll(); $("#hint").hidden = true;
+  view = "ask"; renderCats(); setSnap(opts || text ? 1 : 2); rerenderSheet(); drawNearby();
+  if (text != null && (text || opts)) runAsk(text, opts);
+}
+async function runAsk(text, opts = {}) {
+  const seq = ++ASK.seq;
+  Object.assign(ASK, { text: text || "", plan: null, items: [], notes: [], error: false, busy: true });
+  rerenderSheet(); drawNearby();
+  const plan = await understand(text || "", opts).catch(() => null);
+  if (seq !== ASK.seq) return;
+  ASK.plan = plan;
+  if (!plan?.cat) { ASK.busy = false; ASK.notes = [t("ai_none")]; return rerenderSheet(); }
+  if (plan.missed) ASK.notes.push(t("ai_noArea", { q: plan.missed }));
+  try { const r = await findPlaces(plan); if (seq !== ASK.seq) return; ASK.items = r.items; ASK.notes.push(...r.notes); }
+  catch { if (seq !== ASK.seq) return; ASK.error = true; }
+  ASK.busy = false;
+  if (view !== "ask") return;
+  rerenderSheet(); drawNearby();
+  const pts = [[plan.where.lon, plan.where.lat], ...ASK.items.map(p => [p.lon, p.lat])];
+  if (ASK.items.length) fitLine(pts); else map.flyTo({ center: pts[0], zoom: 14.5 });
+}
+function listen() {
+  if (!SpeechRec || ASK.listening) return;
+  const rec = new SpeechRec();
+  rec.lang = { es: "es-ES", en: "en-US", pt: "pt-PT", fr: "fr-FR", ko: "ko-KR", zh: "zh-CN", ja: "ja-JP", ru: "ru-RU" }[lang] || "en-US";
+  rec.interimResults = false; rec.maxAlternatives = 1;
+  ASK.listening = true; rerenderSheet();
+  rec.onresult = e => { const txt = e.results?.[0]?.[0]?.transcript || ""; ASK.listening = false; if (txt) runAsk(txt); else rerenderSheet(); };
+  rec.onerror = rec.onend = () => { if (ASK.listening) { ASK.listening = false; rerenderSheet(); } };
+  try { rec.start(); } catch { ASK.listening = false; rerenderSheet(); }
+}
+// Go there: the way to travel and the kind of route follow your words, the distance and the weather
+function takeMe(p) {
+  const mood = wxMood(), plan = ASK.plan || {}, O = origin();
+  const d = O ? km(O, p) : 1;
+  const mode = plan.mode || (d > 2.5 ? "transit" : ["rain", "cold"].includes(mood) && d > .8 ? "transit" : "walk");
+  const prefs = mode === "walk" || mode === "bike" ? (mood === "hot" ? ["shade"] : plan.quiet ? ["quiet"] : plan.cat === "photo" && mood === "nice" ? ["scenic"] : []) : [];
+  choose(p);
+  R.mode = mode; R.prefs = prefs; R.steps = false;
+  startDirections();
+}
+
+function planChips(plan) {
+  const where = plan.where.kind === "area" ? t("ai_inArea", { a: plan.where.name }) : plan.where.kind === "home" ? t("ai_atHome") : plan.where.kind === "map" ? t("ai_onMap") : t("ai_nearMe");
+  const chips = [[AI_ICON[plan.cat], plan.surprise ? `${t("ai_surprise")}: ${t("aic_" + plan.cat)}` : t("aic_" + plan.cat)]];
+  if (plan.cuisineWord) chips.push(["food", plan.cuisineWord]);
+  if (plan.diet) chips.push(["food", t("why_" + (plan.diet === "vegetarian" ? "veg" : plan.diet))]);
+  chips.push(["pin", where]);
+  if (plan.cheap) chips.push(["atm", t("ai_cheap")]);
+  if (plan.quiet) chips.push(["quiet", t("ai_quiet")]);
+  if (plan.english) chips.push(["globe", t("ai_english")]);
+  if (plan.mode) chips.push([plan.mode, t(plan.mode)]);
+  return `<div class="ai-got"><span class="ai-got-l">${t("ai_got")}</span>${chips.map(([ic, tx]) => `<span class="got">${ICON[ic] || ""}${esc(tx)}</span>`).join("")}</div>`;
+}
+function renderAsk() {
+  sheet.hidden = false;
+  const mood = wxMood(), plan = ASK.plan;
+  const form = `<form class="ai-form" id="aiForm"><textarea id="aiQ" rows="2" maxlength="200" enterkeyhint="search" placeholder="${esc(t("ai_placeholder"))}" aria-label="${esc(t("ai_title"))}">${esc(ASK.text)}</textarea>
+    <div class="ai-actions">${SpeechRec ? `<button class="btn icon${ASK.listening ? " on" : ""}" type="button" id="aiMic" aria-pressed="${ASK.listening}" aria-label="${esc(t("ai_mic"))}" title="${esc(t("ai_mic"))}">${ICON.mic}</button>` : ""}<button class="btn go" type="submit" ${ASK.busy ? "disabled" : ""}>${ICON.sparkle}${t(ASK.listening ? "ai_listening" : "ai_go")}</button></div></form>`;
+  let body = "";
+  if (ASK.busy) body = `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("ai_thinking")}</span></div><div class="bar"></div></div><div class="skel"></div><div class="skel"></div>`;
+  else if (plan || ASK.notes.length || ASK.error) {
+    const tip = plan?.cat && mood && (mood !== "nice" || !INDOOR.has(plan.cat)) ? `<div class="insight wx-tip">${wxIcon(WX.data.kind, WX.data.day)}<div>${t("tip_" + mood)}</div></div>` : "";
+    const notes = ASK.notes.map(x => `<div class="insight">${statusIcon("think")}<div>${esc(x)}</div></div>`).join("");
+    let results = "";
+    if (ASK.error) results = `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="aiRetry" type="button">${t("retry")}</button></div></div>`;
+    else if (plan?.cat && !ASK.items.length) results = `<div class="insight">${statusIcon("sad")}<div>${t("ai_noplaces")}</div></div>`;
+    else if (ASK.items.length) {
+      const c = AI_COLOR[plan.cat], ref = me || plan.where;
+      results = `<p class="q">${t(ASK.items.length === 1 ? "ai_results1" : "ai_results", { n: ASK.items.length })}</p><div class="ai-list" role="list">${ASK.items.map((p, i) => {
+        const a = areaOf(p);
+        return `<div class="ai-card" role="listitem"><button class="ai-main" type="button" data-i="${i}"><span class="ic" style="color:${c}">${ICON[AI_ICON[plan.cat]]}</span><span class="ai-tx"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([fmtDist(km(ref, p)), a ? areaName(a) : "", p.local].filter(Boolean).join(" · "))}</span></span></button><button class="btn go take" type="button" data-go="${i}">${ICON.go}${t("ai_take")}</button>${whyHtml(p.why)}</div>`;
+      }).join("")}</div>`;
+    }
+    body = (plan?.cat ? planChips(plan) : "") + tip + notes + results + `<button class="btn" id="aiAgain" type="button">${t("ai_again")}</button>`;
+  } else {
+    const ex = [mood === "rain" ? t("ai_exRain") : t("ai_ex1"), t("ai_ex2"), t("ai_ex3")];
+    body = `<div><p class="q sm">${t("ai_try")}</p><div class="ai-chips">${ex.map(x => `<button type="button" class="chip ex" data-ex="${esc(x)}">“${esc(x)}”</button>`).join("")}<button type="button" class="chip surprise" id="aiSurprise">${ICON.sparkle}${t("ai_surprise")}</button></div></div>
+      <div><p class="q sm">${t("ai_areas")}</p><div class="ai-chips">${AREAS.map(a => `<button type="button" class="chip" data-area="${a.k}">${ICON.pin}${esc(areaName(a))}</button>`).join("")}</div></div>
+      <div><p class="q sm">${t("ai_tastes")}</p>${tasteChips()}</div>`;
+  }
+  sheetBody.innerHTML = headRow(`<div class="ai-head">${statusIcon(ASK.busy ? "think" : "happy")}<div><h2 class="title">${t("ai_title")}</h2>${plan || ASK.busy ? "" : `<p class="sub2">${t("ai_sub")}</p>`}</div></div>`) + form + body + `<p class="foot">${ICON.shield}${t("ai_source")}</p>`;
+  const q = $("#aiQ");
+  $("#aiForm").addEventListener("submit", e => { e.preventDefault(); q.blur(); runAsk(q.value.trim()); });
+  q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); q.blur(); runAsk(q.value.trim()); } });
+  const mic = $("#aiMic"); if (mic) mic.onclick = listen;
+  sheetBody.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => runAsk(b.dataset.ex));
+  sheetBody.querySelectorAll("[data-area]").forEach(b => b.onclick = () => { const a = AREAS.find(x => x.k === b.dataset.area); runAsk(areaName(a), { area: a }); });
+  const sp = $("#aiSurprise"); if (sp) sp.onclick = () => runAsk("", { surprise: true });
+  sheetBody.querySelectorAll(".ai-main").forEach(b => b.onclick = () => choose(ASK.items[+b.dataset.i]));
+  sheetBody.querySelectorAll("[data-go]").forEach(b => b.onclick = () => takeMe(ASK.items[+b.dataset.go]));
+  const again = $("#aiAgain"); if (again) again.onclick = () => { ASK.seq++; Object.assign(ASK, { plan: null, items: [], notes: [], error: false, busy: false }); rerenderSheet(); drawNearby(); setSnap(2); };
+  const rt = $("#aiRetry"); if (rt) rt.onclick = () => runAsk(ASK.text, ASK.plan?.surprise ? { surprise: true } : {});
+  bindTasteChips();
+  bindClose();
 }

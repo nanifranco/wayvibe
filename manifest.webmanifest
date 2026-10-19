@@ -1,12 +1,12 @@
 {
   "name": "Wayvibe",
   "short_name": "Wayvibe",
-  "description": "Tu guía para venir a estudiar a Corea: trámites, lugares útiles y mapa.",
+  "description": "El mapa para estudiantes de intercambio en Corea, con lugares para extranjeros y el clima.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#fbf6ee",
-  "theme_color": "#fbf6ee",
+  "background_color": "#f5f6f8",
+  "theme_color": "#2563eb",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
