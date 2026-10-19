@@ -1,17 +1,17 @@
 # Wayvibe
 
-El mapa para estudiantes de intercambio en Corea. Le dices a Vibi lo que se te antoja ("un café tranquilo cerca de Hongdae, puede llover") y te propone lugares reales que les gustan a los extranjeros, mira el clima y te lleva con una ruta real, todo dentro de la app.
+El mapa para estudiantes de intercambio en Corea. Escribes lo que se te antoja ("un café tranquilo cerca de Hongdae, puede llover") y la app te propone lugares reales que les gustan a los extranjeros, mira el clima y te lleva con una ruta real, todo dentro de la app.
 
 ## Para estudiantes de intercambio
 
-1. **Primera vez:** eliges idioma y Vibi te pregunta qué te gusta (cafés, comida, bares, parques, cultura, compras, vistas, karaoke). Puedes marcar cualquier lugar como "Es mi casa" para volver con un toque.
-2. **Pídele a Vibi:** escribe o habla como con un amigo, en cualquiera de los 8 idiomas. Vibi entiende el tipo de lugar, la comida (BBQ coreano, pollo, ramen, vegano, halal…), el barrio (Hongdae, Sinchon, Itaewon, Anam, etc. o cualquier sitio que nombres), si lo quieres cerca, barato, tranquilo o con inglés, y cómo quieres ir. Te enseña lo que entendió antes de los resultados.
+1. **Primera vez:** eliges idioma y la app te pregunta qué te gusta (cafés, comida, bares, parques, cultura, compras, vistas, karaoke). Puedes marcar cualquier lugar como "Es mi casa" para volver con un toque.
+2. **Pide un plan:** escribe o habla como con un amigo, en cualquiera de los 8 idiomas. La app entiende el tipo de lugar, la comida (BBQ coreano, pollo, ramen, vegano, halal…), el barrio (Hongdae, Sinchon, Itaewon, Anam, etc. o cualquier sitio que nombres), si lo quieres cerca, barato, tranquilo o con inglés, y cómo quieres ir. Te enseña lo que entendió antes de los resultados.
 3. **Lugares que prefieren los extranjeros:** primero salen los que tienen nombre en inglés, opciones veganas o halal, aceptan tarjeta, están en zonas de extranjeros o son muy conocidos. Cada resultado dice por qué. También está el botón "Favoritos de extranjeros" y los lugares cercanos se ordenan igual. Si el nombre está en otro idioma, se muestra también el nombre local para enseñárselo a alguien.
-4. **Clima:** temperatura, lluvia de las próximas horas y polvo fino (PM2.5) arriba del mapa. Si va a llover, Vibi propone lugares bajo techo y metro o bus; si hace calor, caminos con sombra.
+4. **Clima:** temperatura, lluvia de las próximas horas y polvo fino (PM2.5) arriba del mapa. Si va a llover, propone lugares bajo techo y metro o bus; si hace calor, caminos con sombra.
 5. **"Llévame":** abre la ruta real con el modo y el tipo de camino que tienen sentido (a pie, metro y bus, sombra, tranquila…), y la navegación paso a paso de siempre.
-6. **Me gustó / No es para mí:** Vibi lo recuerda en tu teléfono; no vuelve a sugerirte lo que no te gustó y prioriza lo que sí.
+6. **Me gustó / No es para mí:** se guarda en tu teléfono; no vuelve a sugerirte lo que no te gustó y prioriza lo que sí.
 
-Vibi funciona dentro de la app, sin servidor ni claves: interpreta tu frase con un vocabulario propio en 8 idiomas. Nunca inventa lugares: todo sale de OpenStreetMap. Si algo no está marcado en el mapa (por ejemplo, ningún lugar halal cerca), lo dice.
+"Pide un plan" funciona dentro de la app, sin servidor ni claves: interpreta tu frase con un vocabulario propio en 8 idiomas. Nunca inventa lugares: todo sale de OpenStreetMap. Si algo no está marcado en el mapa (por ejemplo, ningún lugar halal cerca), lo dice.
 ## Qué hace
 
 - Muestra un mapa real del mundo y dónde estás (calle, barrio y ciudad).
@@ -26,7 +26,6 @@ Vibi funciona dentro de la app, sin servidor ni claves: interpreta tu frase con 
 - Lista "Lugares que quiero visitar": toca ♡ Guardar en cualquier lugar y lo encuentras en el botón Guardados (se guarda solo en tu teléfono).
 - "Turística" con tres niveles: 1 Lo básico (solo lo más famoso, con artículo en Wikipedia), 2 + Museos (museos, miradores y monumentos), 3 Todo. Solo cuenta sitios reales con nombre, cada uno una vez, y te dice cuáles son. "Con vistas" es aparte: miradores, jardines, fuentes, plazas y calles peatonales.
 - Si el celular cierra la app, al abrirla retoma tu última ruta.
-- Vibi, la mascota de Wayvibe (un pin redondito con un brote en la cabeza, parado sobre un mapa): te saluda con una animación al abrir la app, piensa mientras busca la ruta, se pone triste cuando no se puede llegar, duerme sin conexión y celebra con confeti cuando llegas.
 - Aguanta fallas: si un servidor no responde, reintenta y usa uno de respaldo (rutas con OSRM, búsqueda con Nominatim, lugares con otros espejos de Overpass, mapa con OpenStreetMap). Sin señal te avisa y reintenta solo cuando vuelve.
 - Durante la navegación mantiene la pantalla encendida y avisa si el GPS está débil o perdido.
 - Se puede instalar en el celular ("Agregar a pantalla de inicio") y abre sin conexión con los mapas que ya viste. Si la librería del mapa no carga, la busca en un segundo servidor, y si tu navegador no puede dibujar mapas te dice cómo arreglarlo en vez de dejar la pantalla en blanco.

@@ -1,7 +1,7 @@
 {
   "name": "Wayvibe",
   "short_name": "Wayvibe",
-  "description": "El mapa para estudiantes de intercambio en Corea, con Vibi y el clima.",
+  "description": "El mapa para estudiantes de intercambio en Corea, con lugares para extranjeros y el clima.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

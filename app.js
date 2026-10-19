@@ -1,6 +1,6 @@
 import { LANGS, T, PREF_WORDS, ACCESS_WORDS, ROUTE_LANG } from "./i18n.js";
-import { buddy, celebrate } from "./mascot.js";
-import { VERSION } from "./splash.js";
+import { statusIcon, celebrate } from "./icons.js";
+import { VERSION } from "./version.js";
 import { AI_T, AI_WORDS, AREAS, TASTES } from "./ai-i18n.js";
 for (const l in AI_T) Object.assign(T[l] ||= {}, AI_T[l]);
 
@@ -89,7 +89,7 @@ addEventListener("unhandledrejection", e => oops(e.reason));
 document.querySelector(".brand")?.addEventListener("click", () => toast(`Wayvibe v${VERSION}`));
 
 // ---------- Connection ----------
-function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${buddy("sleep")}<span>${t("offline")}</span>`; }
+function renderOffline() { const b = $("#offline"); b.hidden = navigator.onLine; b.innerHTML = `${statusIcon("sleep")}<span>${t("offline")}</span>`; }
 addEventListener("offline", renderOffline);
 addEventListener("online", () => {
   renderOffline(); toast(t("backOnline"));
@@ -280,7 +280,7 @@ function hasWebGL() { try { const c = document.createElement("canvas"); return !
 // When there is no way to draw a map, say why and how to fix it instead of showing a blank screen
 function fatal(key) {
   dispatchEvent(new Event("wv-ready"));
-  document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${buddy("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="fatal" role="alert">${statusIcon("sad", "big")}<p>${t(key)}</p><button class="btn go" type="button" onclick="location.reload()">${t("retry")}</button></div>`);
 }
 if (!(await ensureMapLib())) { fatal("noMapLib"); throw new Error("map library unavailable"); }
 if (!hasWebGL()) { fatal("noMap"); throw new Error("WebGL unavailable"); }
@@ -354,7 +354,7 @@ function tintMap() {
   }
 }
 map.on("style.load", () => { tintMap(); setLabelLanguage(); ensureLayers(); });
-map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); loadWeather(); setTimeout(maybeHello, 2800); });
+map.on("load", () => { geo.trigger(); resumeTrip(); dispatchEvent(new Event("wv-ready")); loadWeather(); setTimeout(maybeHello, 900); });
 if (location.hostname === "localhost") window.wvDebug = { map, get R() { return R; } };
 function resumeTrip() {
   const tr = store.get("trip");
@@ -425,8 +425,8 @@ function renderWhere() {
 // Long-press has no visible signifier on a map, so we teach it once.
 function maybeHint() {
   if (store.get("hint", false) || dest || view || !store.get("onboarded", false)) return;
-  $("#hintBuddy").innerHTML = buddy("happy");
-  $("#hintText").textContent = t("hintPress"); // the splash already said hello
+  $("#hintBuddy").innerHTML = statusIcon("happy");
+  $("#hintText").textContent = t("hintPress");
   $("#hint").hidden = false;
 }
 $("#hintOk").onclick = () => { $("#hint").hidden = true; store.set("hint", true); };
@@ -717,8 +717,8 @@ function renderNearby() {
   const c = CATS[NEAR.cat];
   let body;
   if (NEAR.busy) body = `<p class="note">${t("searching")}</p><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
-  else if (NEAR.error) body = `<div class="insight err">${buddy("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
-  else if (!NEAR.items.length) body = `<div class="insight">${buddy("think")}<div>${t("nearbyNone")}</div></div>`;
+  else if (NEAR.error) body = `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="retryNear" type="button">${t("retry")}</button></div></div>`;
+  else if (!NEAR.items.length) body = `<div class="insight">${statusIcon("think")}<div>${t("nearbyNone")}</div></div>`;
   else body = `<div class="places" role="list">${NEAR.items.map((p, i) => `<button class="sug" type="button" role="listitem" data-i="${i}"><span class="ic" style="color:${c.color}">${ICON[c.icon]}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc([p.sub, p.tags.wheelchair === "yes" ? "♿ " + t("wc_yes") : ""].filter(Boolean).join(" · "))}</span>${whyHtml(p.ff?.why)}</span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button>`).join("")}</div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${esc(t("nearbyTitle", { cat: t("cat_" + NEAR.cat) }))}</h2>`) + body + `<p class="foot">${ICON.info}OpenStreetMap</p>`;
   sheetBody.querySelectorAll(".places .sug").forEach(b => b.onclick = () => choose(NEAR.items[+b.dataset.i]));
@@ -764,7 +764,7 @@ function renderSaved() {
   const list = savedList();
   const body = list.length
     ? `<div class="places" role="list">${list.map((p, i) => `<div class="saved-row" role="listitem"><button class="sug" type="button" data-i="${i}"><span class="ic" style="color:#e11d48">${ICON.heartOn}</span><span style="min-width:0"><span class="nm">${esc(p.name)}</span><span class="sub">${esc(p.sub)}</span></span><span class="d">${me ? fmtDist(km(me, p)) : ""}</span></button><button class="btn icon rm" type="button" data-i="${i}" aria-label="${esc(t("removeSaved") + ": " + p.name)}" title="${esc(t("removeSaved"))}">${ICON.trash}</button></div>`).join("")}</div>`
-    : `<div class="insight">${buddy("happy")}<div>${t("savedEmpty")}</div></div>`;
+    : `<div class="insight">${statusIcon("happy")}<div>${t("savedEmpty")}</div></div>`;
   sheetBody.innerHTML = headRow(`<h2 class="title">${t("savedTitle")}</h2>${list.length ? `<p class="sub2">${t(list.length === 1 ? "savedOne" : "savedCount", { n: list.length })}</p>` : ""}`) + body + `<p class="foot">${ICON.shield}${t("savedPrivate")}</p>`;
   sheetBody.querySelectorAll(".saved-row .sug").forEach(b => b.onclick = () => choose(list[+b.dataset.i]));
   sheetBody.querySelectorAll(".saved-row .rm").forEach(b => b.onclick = () => { toggleSave(list[+b.dataset.i]); renderSaved(); drawSaved(); });
@@ -809,10 +809,10 @@ function renderRoute() {
   else {
     const c = current();
     let hero = "", body = "";
-    if (!origin()) body = `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
-    else if (R.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
-    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${buddy("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
-    else if (R.fast[R.mode]?.error) body = `<div class="insight err">${buddy("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
+    if (!origin()) body = `<div class="insight">${statusIcon("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
+    else if (R.busy) body = `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("calculating")}</span></div><div class="bar"></div></div>`;
+    else if (R.fast[R.mode]?.unreachable) body = `<div class="insight err">${statusIcon("sad")}<div><b>${t((R.fast[R.mode].reason === "far" ? "unreachableFar_" : "unreachable_") + R.mode)}</b></div></div>`;
+    else if (R.fast[R.mode]?.error) body = `<div class="insight err">${statusIcon("sad")}<div>${t(R.fast[R.mode].offline ? "offline" : "serviceDown")}<br><button class="btn" id="retryRoute" type="button">${t("retry")}</button></div></div>`;
     else if (c?.time) {
       hero = `<div class="hero"><div class="hero-row"><span class="eta">${fmtDur(c.time)}</span>${usesAccess() ? `<span class="badge acc">${ICON.wheel}${t("accessOn")}</span>` : ""}</div><span class="eta-sub">${t("arriveAt", { t: etaClock(c.time) })} · ${fmtDist(c.length)}</span></div>`;
       const lines = [];
@@ -836,7 +836,7 @@ function renderRoute() {
       <div class="prefs" role="group" aria-label="${esc(t("howToGo"))}">${PREFS.map(p => `<button class="pref" type="button" data-p="${p}" aria-pressed="${active.includes(p)}" style="--c1:${VIBES[p][0]};--c2:${VIBES[p][1]}"><i>${ICON[p]}</i>${t(p)}${ICON.check}</button>`).join("")}</div>
       ${active.includes("tourist") ? `<div class="levels"><p class="q sm">${t("qTourLevel")}</p><div class="lvl-row" role="radiogroup" aria-label="${esc(t("qTourLevel"))}">${[1, 2, 3].map(l => `<button class="lvl" type="button" role="radio" data-l="${l}" aria-checked="${tourLevel === l}"><span class="lvl-n">${"●".repeat(l)}${"○".repeat(3 - l)}</span><b>${t("lvl" + l)}</b><small>${t("lvl" + l + "d")}</small>${R.levelCounts ? `<span class="lvl-c">${t("lvlCount", { n: R.levelCounts[l] })}</span>` : ""}</button>`).join("")}</div></div>` : ""}
       <form class="ask" id="askForm"><input id="ask" maxlength="60" placeholder="${esc(t("askPlaceholder"))}" aria-label="${esc(t("howToGo"))}" value="${esc(R.askText)}"><button type="submit">OK</button></form>
-      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${buddy(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
+      ${R.askMsg ? `<p class="ask-msg ${R.askMsg.cls}" role="status">${statusIcon(R.askMsg.cls === "ok" ? "happy" : "think")}<span>${esc(R.askMsg.text)}</span></p>` : ""}</div>`;
     const steps = R.steps && c?.maneuvers ? `<ul class="steps">${c.maneuvers.map(m => `<li class="step"><span class="ic">${manIcon(m.type)}</span><span class="tx">${esc(m.instruction)}</span><span class="d">${m.length ? fmtDist(m.length) : ""}</span></li>`).join("")}</ul>` : "";
     const ready = c?.coords && !R.busy;
     const atStart = !from || (me && km(me, from) < .3); // turn-by-turn only makes sense from where you are
@@ -1167,12 +1167,12 @@ function lineBadge(l) {
 }
 const mins = s => Math.max(1, Math.round(s / 60));
 function transitBody() {
-  if (!origin()) return `<div class="insight">${buddy("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
-  if (R.busy) return `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
+  if (!origin()) return `<div class="insight">${statusIcon("think")}<div>${t("needStart")}<br><button class="btn" id="pickStartBtn" type="button">${t("chooseStart")}</button></div></div>`;
+  if (R.busy) return `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("transitLoading")}</span></div><div class="bar"></div></div>`;
   const T0 = R.transit || { items: [] }, items = T0.items;
   if (!items.length) {
-    if (T0.walkBetter) return `<div class="insight">${buddy("happy")}<div>${t("transitWalk")}<br><button class="btn" id="goWalk" type="button">${t("goWalk")}</button></div></div>`;
-    return `<div class="insight err">${buddy("sad")}<div>${t(T0.failed ? (T0.offline ? "offline" : "transitDown") : "noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
+    if (T0.walkBetter) return `<div class="insight">${statusIcon("happy")}<div>${t("transitWalk")}<br><button class="btn" id="goWalk" type="button">${t("goWalk")}</button></div></div>`;
+    return `<div class="insight err">${statusIcon("sad")}<div>${t(T0.failed ? (T0.offline ? "offline" : "transitDown") : "noTransit")}<br><button class="btn" id="retryTransit" type="button">${t("retry")}</button></div></div>`;
   }
   const it = items[R.itin] || items[0];
   const tr = it.transfers === 0 ? t("direct") : it.transfers === 1 ? t("oneTransfer") : t("transfers", { n: it.transfers });
@@ -1325,7 +1325,7 @@ function renderNav() {
   navtop.innerHTML = NAV.rerouting
     ? `<div class="navcard"><span class="arrow">${ICON.round}</span><div><div class="ins">${t("rerouting")}</div></div></div>`
     : arrived
-      ? `<div class="navcard arrived">${buddy("party")}<div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div><div class="cheer">${t("cheer")}</div></div></div>`
+      ? `<div class="navcard arrived">${statusIcon("party")}<div><div class="dist">${t("arrived")}</div><div class="ins">${esc(dest.name)}</div><div class="cheer">${t("cheer")}</div></div></div>`
       : `<div class="navcard"><span class="arrow">${manIcon(next?.type)}</span><div><div class="dist">${fmtDist(dist)}</div><div class="ins">${esc(next?.instruction || "")}</div></div></div>
          ${after ? `<div class="navnext">${t("then")} ${manIcon(after.type)} <span>${esc(after.instruction)}</span></div>` : ""}`;
   const gps = Date.now() - NAV.lastFix > 15000 ? `<div class="gps bad">${t("gpsLost")}</div>` : NAV.acc > 60 ? `<div class="gps">${t("gpsWeak")}</div>` : "";
@@ -1468,8 +1468,8 @@ async function personalized(O, D, mode, prefs, fast) {
   return { route, pois: passed.filter(p => p.name), count, levelCounts }; // the map shows exactly the places we count
 }
 
-// ---------- Exchange students: weather, places foreigners like, and Vibi's place finder ----------
-// Vibi understands what you type (or say) right here in the app, in any app language: the kind of place, the area,
+// ---------- Exchange students: weather, places foreigners like, and the place finder ----------
+// "Ask for a plan" understands what you type (or say) right here in the app, in any app language: the kind of place, the area,
 // how far, how you want to go, budget, diet and the weather. It never makes places up: every result is a real
 // OpenStreetMap place, ranked so the ones foreigners tend to like (English name, vegan/halal, cards, foreigner areas) come first.
 const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
@@ -1547,14 +1547,14 @@ function renderWeather() {
   const d = WX.data;
   let body;
   if (!d) body = WX.error
-    ? `<div class="insight err">${buddy("sad")}<div>${t(navigator.onLine ? "wx_err" : "offline")}<br><button class="btn" id="wxRetry" type="button">${t("retry")}</button></div></div>`
+    ? `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "wx_err" : "offline")}<br><button class="btn" id="wxRetry" type="button">${t("retry")}</button></div></div>`
     : `<div class="skel"></div><div class="skel"></div>`;
   else {
     const air = airLevel(d.pm25), mood = wxMood();
     body = `<div class="wx-hero"><span class="wx-big ${mood}">${wxIcon(d.kind, d.day)}</span><div><span class="eta">${d.temp}°</span><span class="eta-sub">${t("wx_" + d.kind)} · ${t("wx_feels", { n: d.feels })}</span></div></div>
       ${d.hours.length ? `<div><p class="q">${t("wx_next")}</p><div class="wx-hours">${d.hours.map(x => `<div class="wx-h"><small>${esc(x.hour)}</small>${wxIcon(x.kind)}<b>${isFinite(x.temp) ? x.temp + "°" : "–"}</b><span class="wx-p${x.prob >= 50 ? " hi" : ""}">${ICON.umbrella}${x.prob}%</span></div>`).join("")}</div></div>` : ""}
       ${air ? `<div class="wx-air"><span>${t("wx_air")}</span><b class="air ${air}">${t("air_" + air)} · ${d.pm25} µg/m³</b></div>` : ""}
-      <div class="insight">${buddy(mood === "nice" ? "happy" : "think")}<div>${t("tip_" + mood)}</div></div>
+      <div class="insight">${statusIcon(mood === "nice" ? "happy" : "think")}<div>${t("tip_" + mood)}</div></div>
       <div class="actions"><button class="btn go" id="wxPlan" type="button">${ICON.sparkle}${t("wx_plan")}</button></div>`;
   }
   const where = whereAddr?.sub || "";
@@ -1657,14 +1657,14 @@ function bindTasteChips() {
     store.set("tastes", [...on]); b.setAttribute("aria-pressed", on.has(k));
   });
 }
-// First open: Vibi says hello and asks what you like, once
+// First open: a welcome that asks what you like, once
 function maybeHello() {
   if (store.get("onboarded", false) || view || dest || NAV.active) return;
   view = "hello"; renderCats(); setSnap(1); rerenderSheet();
 }
 function renderHello() {
   sheet.hidden = false;
-  sheetBody.innerHTML = `<div class="hello">${buddy("wave")}<div><h2 class="title">${t("onb_title")}</h2><p class="sub2">${t("onb_text")}</p></div></div>
+  sheetBody.innerHTML = `<div class="hello">${statusIcon("wave")}<div><h2 class="title">${t("onb_title")}</h2><p class="sub2">${t("onb_text")}</p></div></div>
     ${tasteChips()}
     <div class="actions"><button class="btn" id="onbSkip" type="button">${t("onb_skip")}</button><button class="btn go" id="onbDone" type="button">${ICON.check}${t("onb_done")}</button></div>`;
   bindTasteChips();
@@ -1673,7 +1673,7 @@ function renderHello() {
   $("#onbDone").onclick = end;
 }
 
-// ---------- Vibi: understands what you feel like and finds real places ----------
+// ---------- Ask for a plan: understands what you feel like and finds real places ----------
 const AI_ICON = { cafe: "cafe", dessert: "icecream", food: "food", bar: "beer", karaoke: "mic", park: "park", culture: "museum", shopping: "bag", study: "book", photo: "tourist", market: "bag", pharmacy: "pharmacy", atm: "atm" };
 const AI_COLOR = { cafe: "#92400e", dessert: "#db2777", food: "#ea580c", bar: "#7c3aed", karaoke: "#c026d3", park: "#16a34a", culture: "#0e7490", shopping: "#e11d48", study: "#2563eb", photo: "#0891b2", market: "#475569", pharmacy: "#059669", atm: "#475569" };
 const INDOOR = new Set(["cafe", "dessert", "food", "bar", "karaoke", "culture", "shopping", "study", "market", "pharmacy", "atm"]);
@@ -1866,13 +1866,13 @@ function renderAsk() {
   const form = `<form class="ai-form" id="aiForm"><textarea id="aiQ" rows="2" maxlength="200" enterkeyhint="search" placeholder="${esc(t("ai_placeholder"))}" aria-label="${esc(t("ai_title"))}">${esc(ASK.text)}</textarea>
     <div class="ai-actions">${SpeechRec ? `<button class="btn icon${ASK.listening ? " on" : ""}" type="button" id="aiMic" aria-pressed="${ASK.listening}" aria-label="${esc(t("ai_mic"))}" title="${esc(t("ai_mic"))}">${ICON.mic}</button>` : ""}<button class="btn go" type="submit" ${ASK.busy ? "disabled" : ""}>${ICON.sparkle}${t(ASK.listening ? "ai_listening" : "ai_go")}</button></div></form>`;
   let body = "";
-  if (ASK.busy) body = `<div class="loading"><div class="loading-row">${buddy("think")}<span class="note">${t("ai_thinking")}</span></div><div class="bar"></div></div><div class="skel"></div><div class="skel"></div>`;
+  if (ASK.busy) body = `<div class="loading"><div class="loading-row">${statusIcon("think")}<span class="note">${t("ai_thinking")}</span></div><div class="bar"></div></div><div class="skel"></div><div class="skel"></div>`;
   else if (plan || ASK.notes.length || ASK.error) {
     const tip = plan?.cat && mood && (mood !== "nice" || !INDOOR.has(plan.cat)) ? `<div class="insight wx-tip">${wxIcon(WX.data.kind, WX.data.day)}<div>${t("tip_" + mood)}</div></div>` : "";
-    const notes = ASK.notes.map(x => `<div class="insight">${buddy("think")}<div>${esc(x)}</div></div>`).join("");
+    const notes = ASK.notes.map(x => `<div class="insight">${statusIcon("think")}<div>${esc(x)}</div></div>`).join("");
     let results = "";
-    if (ASK.error) results = `<div class="insight err">${buddy("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="aiRetry" type="button">${t("retry")}</button></div></div>`;
-    else if (plan?.cat && !ASK.items.length) results = `<div class="insight">${buddy("sad")}<div>${t("ai_noplaces")}</div></div>`;
+    if (ASK.error) results = `<div class="insight err">${statusIcon("sad")}<div>${t(navigator.onLine ? "serviceDown" : "offline")}<br><button class="btn" id="aiRetry" type="button">${t("retry")}</button></div></div>`;
+    else if (plan?.cat && !ASK.items.length) results = `<div class="insight">${statusIcon("sad")}<div>${t("ai_noplaces")}</div></div>`;
     else if (ASK.items.length) {
       const c = AI_COLOR[plan.cat], ref = me || plan.where;
       results = `<p class="q">${t(ASK.items.length === 1 ? "ai_results1" : "ai_results", { n: ASK.items.length })}</p><div class="ai-list" role="list">${ASK.items.map((p, i) => {
@@ -1887,7 +1887,7 @@ function renderAsk() {
       <div><p class="q sm">${t("ai_areas")}</p><div class="ai-chips">${AREAS.map(a => `<button type="button" class="chip" data-area="${a.k}">${ICON.pin}${esc(areaName(a))}</button>`).join("")}</div></div>
       <div><p class="q sm">${t("ai_tastes")}</p>${tasteChips()}</div>`;
   }
-  sheetBody.innerHTML = headRow(`<div class="ai-head">${buddy(ASK.busy ? "think" : "happy")}<div><h2 class="title">${t("ai_title")}</h2>${plan || ASK.busy ? "" : `<p class="sub2">${t("ai_sub")}</p>`}</div></div>`) + form + body + `<p class="foot">${ICON.shield}${t("ai_source")}</p>`;
+  sheetBody.innerHTML = headRow(`<div class="ai-head">${statusIcon(ASK.busy ? "think" : "happy")}<div><h2 class="title">${t("ai_title")}</h2>${plan || ASK.busy ? "" : `<p class="sub2">${t("ai_sub")}</p>`}</div></div>`) + form + body + `<p class="foot">${ICON.shield}${t("ai_source")}</p>`;
   const q = $("#aiQ");
   $("#aiForm").addEventListener("submit", e => { e.preventDefault(); q.blur(); runAsk(q.value.trim()); });
   q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); q.blur(); runAsk(q.value.trim()); } });
